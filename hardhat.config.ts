@@ -1,0 +1,156 @@
+import "@nomicfoundation/hardhat-toolbox";
+import * as dotenv from "dotenv";
+import { HardhatUserConfig } from "hardhat/config";
+import "solidity-coverage";
+dotenv.config();
+
+const config: HardhatUserConfig = {
+  gasReporter: {
+    enabled: true,
+  },
+  solidity: {
+    version: "0.8.16",
+    settings: {
+      optimizer: {
+        enabled: true,
+        runs: 200,
+      },
+    },
+  },
+  networks: {
+    zkscroll: {
+      url: "https://rpc.scroll.io",
+      accounts:
+        process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
+    },
+    scrollAlpha: {
+      url: process.env.SCROLL_TESTNET_URL || "https://alpha-rpc.scroll.io/l2",
+      accounts:
+        process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
+    },
+    goerli: {
+      url: process.env.GOERLI_TESTNET_URL || "https://rpc.ankr.com/eth_goerli",
+      accounts:
+        // process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
+        // process.env.PRIVATE_JSON_FILE_PATH !== undefined ? parsePrivateKeysFiles(process.env.PRIVATE_JSON_FILE_PATH) : [],
+        process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
+    },
+    polygon_mumbai: {
+      url: "https://rpc.ankr.com/polygon_mumbai",
+      accounts:
+        process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
+    },
+    polygon: {
+      url: "https://polygon-rpc.com",
+      accounts:
+        process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
+    },
+    sepolia: {
+      url: "https://rpc-sepolia.rockx.com",
+      accounts:
+        process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
+    },
+    sepolia_scroll: {
+      url: "https://sepolia-rpc.scroll.io",
+      accounts:
+        process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
+    },
+    mainnet: {
+      url: "https://ethereum.publicnode.com",
+      accounts:
+        process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
+    },
+  },
+  etherscan: {
+    apiKey: {
+      zkscroll: "abc",
+      sepolia_scroll: "YourApiKeyToken",
+      scrollAlpha: "abc",
+      polygon_mumbai:
+        process.env.MUMBAISCAN_API_KEY !== undefined
+          ? process.env.MUMBAISCAN_API_KEY
+          : "",
+      polygon:
+        process.env.MUMBAISCAN_API_KEY !== undefined
+          ? process.env.MUMBAISCAN_API_KEY
+          : "",
+      sepolia:
+        process.env.SEPOLIASCAN_API_KEY !== undefined
+          ? process.env.SEPOLIASCAN_API_KEY
+          : "",
+      goerli:
+        process.env.GOERLISCAN_API_KEY !== undefined
+          ? process.env.GOERLISCAN_API_KEY
+          : "",
+    },
+    customChains: [
+      {
+        network: "mainnet",
+        chainId: 1,
+        urls: {
+          apiURL: "https://ethereum.publicnode.com",
+          browserURL: "https://etherscan.io/",
+        },
+      },
+      {
+        network: "goerli",
+        chainId: 5,
+        urls: {
+          apiURL: "https://api-goerli.etherscan.io/api",
+          browserURL: "https://goerli.etherscan.io/",
+        },
+      },
+      {
+        network: "scrollAlpha",
+        chainId: 534353,
+        urls: {
+          apiURL: "https://alpha-blockscout.scroll.io/api",
+          browserURL: "https://alpha-blockscout.scroll.io/",
+        },
+      },
+      {
+        network: "zkscroll",
+        chainId: 534352,
+        urls: {
+          apiURL: "https://blockscout.scroll.io/api",
+          browserURL: "https://blockscout.scroll.io/",
+        },
+      },
+      {
+        network: "sepolia",
+        chainId: 11155111,
+        urls: {
+          apiURL: "https://api-sepolia.etherscan.io/api",
+          browserURL: "https://sepolia.etherscan.io/",
+        },
+      },
+      {
+        network: "sepolia_scroll",
+        chainId: 534351,
+        urls: {
+          // apiURL: "https://sepolia-blockscout.scroll.io/api",
+          // browserURL: "https://sepolia-blockscout.scroll.io/",
+          apiURL: "https://api-sepolia.scrollscan.com/api",
+          browserURL: "https://sepolia.scrollscan.com/",
+        },
+      },
+      {
+        network: "polygon_mumbai",
+        chainId: 80001,
+        urls: {
+          apiURL: "https://api-testnet.polygonscan.com/api",
+          browserURL: "https://mumbai.polygonscan.com/",
+        },
+      },
+      {
+        network: "polygon",
+        chainId: 137,
+        urls: {
+          apiURL: "https://api.polygonscan.com/api",
+          browserURL: "https://polygonscan.com/",
+        },
+      },
+    ],
+  },
+};
+export default config;
