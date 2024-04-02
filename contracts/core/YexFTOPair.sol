@@ -33,6 +33,7 @@ contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
     Status public ftoState = Status.Processing;
 
     mapping(address => uint256) public tokenA_deposit;
+    mapping(address => uint256) public claimedLp;
 
     address[] public tokenA_deposit_address;
 
@@ -129,26 +130,26 @@ contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
         );
         address pool_factory = IUniswapV2Router02(otherPool).factory();
         address pair = IUniswapV2Factory(pool_factory).getPair(tokenA, tokenB);
-        uint256 lp_amount = _calculateLPAmount(claimer, pair);
+        uint256 lp_amount = _calculateLPAmount(claimer);
+        
+        require(lp_amount > claimedLp[claimer], "Exceeded claimable amount");
+        
         TransferHelper.safeTransfer(pair, claimer, lp_amount);
+        claimedLp[claimer] = lp_amount;
+        tokenA_deposit[claimer] = 0;
+
         emit ClaimLP(claimer, lp_amount);
     }
 
     function claimableLP(address claimer) external view returns (uint256) {
         require(ftoState == Status.Success, "fund rasing not success.");
-        address pool_factory = IUniswapV2Router02(otherPool).factory();
-        address pair = IUniswapV2Factory(pool_factory).getPair(tokenA, tokenB);
-        uint256 lp_amount = _calculateLPAmount(claimer, pair);
+        uint256 lp_amount = _calculateLPAmount(claimer);
         return lp_amount;
     }
 
     function _calculateLPAmount(
-        address caller,
-        address pair
+        address caller
     ) internal view returns (uint256 lp_amount) {
-        (address token0, ) = tokenA < tokenB
-            ? (tokenA, tokenB)
-            : (tokenB, tokenA);
         lp_amount = 0;
         if (tokenB_provider == caller) {
             lp_amount = poolLP >> 1;
@@ -175,6 +176,14 @@ contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
                 block.timestamp + 10
             );
             poolLP = liquidity;
+            address pool_factory = IUniswapV2Router02(otherPool).factory();
+            address pair = IUniswapV2Factory(pool_factory).getPair(
+                tokenA,
+                tokenB
+            );
+            (address token0, ) = tokenA < tokenB
+                ? (tokenA, tokenB)
+                : (tokenB, tokenA);
             (uint reserve0, uint reserve1, ) = IUniswapV2Pair(pair)
                 .getReserves();
             reserveA = tokenA == token0 ? reserve0 : reserve1;
