@@ -28,6 +28,7 @@ contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
 
     address public otherPool;
     uint256 public poolLP;
+    uint256 public reserveA;
 
     Status public ftoState = Status.Processing;
 
@@ -153,8 +154,7 @@ contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
             lp_amount = poolLP >> 1;
         }
         uint256 deposit_amount = tokenA_deposit[caller];
-        (uint reserve0, uint reserve1, ) = IUniswapV2Pair(pair).getReserves();
-        uint reserveA = tokenA == token0 ? reserve0 : reserve1;
+
         lp_amount = lp_amount + ((deposit_amount * poolLP) >> 1) / reserveA;
     }
 
@@ -175,6 +175,9 @@ contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
                 block.timestamp + 10
             );
             poolLP = liquidity;
+            (uint reserve0, uint reserve1, ) = IUniswapV2Pair(pair)
+                .getReserves();
+            reserveA = tokenA == token0 ? reserve0 : reserve1;
             ftoState = Status.Success;
         } else {
             ftoState = Status.Failed;
