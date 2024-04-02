@@ -1,3 +1,3 @@
-# Yex-DEX
+# Honeypot Finance dreampad model
 
-**Yex-DEX** is a prototype of new generation DEX.
+***What is the FTO (Fair token Offering) Model***
