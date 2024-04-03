@@ -27,7 +27,7 @@ contract YexFTOFacade is IYexFTOFacade, Ownable {
         address tokenB
     ) public view returns (address provider) {
         address pair = YexFTOLibrary.pairFor(factory, tokenA, tokenB);
-        provider = IYexFTOPair(pair).tokenB_provider();
+        provider = IYexFTOPair(pair).tokenBProvider();
     }
 
     function getFTOState(
@@ -35,7 +35,7 @@ contract YexFTOFacade is IYexFTOFacade, Ownable {
         address tokenB
     ) public view override returns (uint256 state) {
         address pair = YexFTOLibrary.pairFor(factory, tokenA, tokenB);
-        state = uint256(IYexFTOPair(pair).ftoState());
+        state = uint256(IYexFTOPair(pair).FTOState());
     }
 
     function deposit(
@@ -60,7 +60,7 @@ contract YexFTOFacade is IYexFTOFacade, Ownable {
         address pair = YexFTOLibrary.pairFor(factory, tokenA, tokenB);
         require(
             getFTOPairProvider(tokenA, tokenB) == msg.sender ||
-                IYexFTOPair(pair).tokenA_deposit(msg.sender) != 0,
+                IYexFTOPair(pair).tokenADeposit(msg.sender) != 0,
             "only tokenB provider or tokenA depositer can claim."
         );
         IYexFTOPair(pair).claimLP(msg.sender);

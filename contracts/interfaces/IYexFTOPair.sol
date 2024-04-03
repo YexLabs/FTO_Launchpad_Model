@@ -22,9 +22,9 @@ interface IYexFTOPair is AutomationCompatibleInterface {
 
     function claimableLP(address claimer) external view returns (uint256);
 
-    function tokenB_provider() external view returns (address);
+    function tokenBProvider() external view returns (address);
 
-    function tokenA_deposit(address) external view returns (uint256);
+    function tokenADeposit(address) external view returns (uint256);
 
-    function ftoState() external view returns (Status);
+    function FTOState() external view returns (Status);
 }

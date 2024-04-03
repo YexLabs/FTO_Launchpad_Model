@@ -81,7 +81,7 @@ contract YexFTOFactory is IYexFTOFactory, Ownable {
 
     function addEvent(address depositer, address ftoPair) public override {
         require(
-            IYexFTOPair(ftoPair).tokenA_deposit(depositer) != 0,
+            IYexFTOPair(ftoPair).tokenADeposit(depositer) != 0,
             "Not participate in this rasing."
         );
         if (events_map[depositer][ftoPair] == false) {

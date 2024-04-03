@@ -16,26 +16,26 @@ contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
     address public tokenA; // tokenA is used to subscribe tokenB
     address public tokenB; // tokenB is the issuer
 
-    address public tokenB_provider;
+    address public tokenBProvider;
 
-    uint256 public deposited_TokenA;
-    uint256 public deposited_TokenB;
+    uint256 public depositedTokenA;
+    uint256 public depositedTokenB;
 
     address public factory;
 
-    uint256 public start_time = block.timestamp;
-    uint256 public end_time;
+    uint256 public startTime = block.timestamp;
+    uint256 public endTime;
 
     address public otherPool;
     uint256 public poolLP;
     uint256 public reserveA;
 
-    Status public ftoState = Status.Processing;
+    Status public FTOState = Status.Processing;
 
-    mapping(address => uint256) public tokenA_deposit;
+    mapping(address => uint256) public tokenADeposit;
     mapping(address => uint256) public claimedLp;
 
-    address[] public tokenA_deposit_address;
+    address[] public tokenADepositAddress;
 
     error InvalidAmount();
     error InvalidUpdate();
@@ -56,15 +56,15 @@ contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
     function initialize(
         address _tokenA,
         address _tokenB,
-        address _tokenB_provider,
+        address _tokenBProvider,
         address _otherPool,
-        uint256 raising_cycle
+        uint256 rasingCycle
     ) external {
         require(msg.sender == factory, "YexFTOPair: FORBIDDEN"); // sufficient check
         tokenA = _tokenA;
         tokenB = _tokenB;
-        tokenB_provider = _tokenB_provider;
-        end_time = block.timestamp + raising_cycle;
+        tokenBProvider = _tokenBProvider;
+        endTime = block.timestamp + rasingCycle;
         otherPool = _otherPool;
     }
 
@@ -72,16 +72,16 @@ contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
         address depositer,
         uint256 amount
     ) external override {
-        require(block.timestamp < end_time, "deposit: raising time is over");
-        require(depositer == tokenB_provider, "only Project owner can deposit");
+        require(block.timestamp < endTime, "deposit: raising time is over");
+        require(depositer == tokenBProvider, "only Project owner can deposit");
         if (amount == 0) {
             revert InvalidAmount();
         }
         uint256 balanceB = IERC20(tokenB).balanceOf(address(this));
-        if (balanceB != amount + deposited_TokenB) {
+        if (balanceB != amount + depositedTokenB) {
             revert InvalidUpdate();
         }
-        deposited_TokenB = deposited_TokenB + amount;
+        depositedTokenB = depositedTokenB + amount;
         emit Deposit(depositer, amount);
     }
 
@@ -89,25 +89,25 @@ contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
         address depositer,
         uint256 amount
     ) external override {
-        require(block.timestamp < end_time, "deposit: raising time is over");
+        require(block.timestamp < endTime, "deposit: raising time is over");
         require(
-            depositer != tokenB_provider,
+            depositer != tokenBProvider,
             "Project owner are not allowed to deposit with their launch"
         );
         if (amount == 0) {
             revert InvalidAmount();
         }
         uint256 balanceA = IERC20(tokenA).balanceOf(address(this));
-        if (balanceA != amount + deposited_TokenA) {
+        if (balanceA != amount + depositedTokenA) {
             revert InvalidUpdate();
         }
 
-        if (tokenA_deposit[depositer] == 0) {
-            tokenA_deposit_address.push(depositer);
+        if (tokenADeposit[depositer] == 0) {
+            tokenADepositAddress.push(depositer);
         }
 
-        tokenA_deposit[depositer] = tokenA_deposit[depositer] + amount;
-        deposited_TokenA = deposited_TokenA + amount;
+        tokenADeposit[depositer] = tokenADeposit[depositer] + amount;
+        depositedTokenA = depositedTokenA + amount;
 
         // update participations
         IYexFTOFactory(factory).addEvent(depositer, address(this));
@@ -116,16 +116,16 @@ contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
     }
 
     function withdraw(address withdrawer) external override lock {
-        require(ftoState == Status.Failed, "fund rasing not failed.");
-        require(tokenB_provider == withdrawer, "only provider can withdraw");
-        IERC20(tokenB).transfer(withdrawer, deposited_TokenB);
-        emit Withdraw(withdrawer, deposited_TokenB);
+        require(FTOState == Status.Failed, "fund rasing not failed.");
+        require(tokenBProvider == withdrawer, "only provider can withdraw");
+        IERC20(tokenB).transfer(withdrawer, depositedTokenB);
+        emit Withdraw(withdrawer, depositedTokenB);
     }
 
     function claimLP(address claimer) external lock {
-        require(ftoState == Status.Success, "fund rasing not success.");
+        require(FTOState == Status.Success, "fund rasing not success.");
         require(
-            tokenB_provider == claimer || tokenA_deposit[claimer] != 0,
+            tokenBProvider == claimer || tokenADeposit[claimer] != 0,
             "only tokenB provider or tokenA depositer can claim."
         );
         address pool_factory = IUniswapV2Router02(otherPool).factory();
@@ -136,13 +136,13 @@ contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
         
         TransferHelper.safeTransfer(pair, claimer, lp_amount);
         claimedLp[claimer] = lp_amount;
-        tokenA_deposit[claimer] = 0;
+        tokenADeposit[claimer] = 0;
 
         emit ClaimLP(claimer, lp_amount);
     }
 
     function claimableLP(address claimer) external view returns (uint256) {
-        require(ftoState == Status.Success, "fund rasing not success.");
+        require(FTOState == Status.Success, "fund rasing not success.");
         uint256 lp_amount = _calculateLPAmount(claimer);
         return lp_amount;
     }
@@ -151,25 +151,25 @@ contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
         address caller
     ) internal view returns (uint256 lp_amount) {
         lp_amount = 0;
-        if (tokenB_provider == caller) {
+        if (tokenBProvider == caller) {
             lp_amount = poolLP >> 1;
         }
-        uint256 deposit_amount = tokenA_deposit[caller];
+        uint256 deposit_amount = tokenADeposit[caller];
 
         lp_amount = lp_amount + ((deposit_amount * poolLP) >> 1) / reserveA;
     }
 
     function _perform() internal {
-        if (deposited_TokenA != 0) {
+        if (depositedTokenA != 0) {
             // rasing success
             // addLiquidity
-            IERC20(tokenA).approve(otherPool, deposited_TokenA);
-            IERC20(tokenB).approve(otherPool, deposited_TokenB);
+            IERC20(tokenA).approve(otherPool, depositedTokenA);
+            IERC20(tokenB).approve(otherPool, depositedTokenB);
             (, , uint liquidity) = IUniswapV2Router02(otherPool).addLiquidity(
                 tokenA,
                 tokenB,
-                deposited_TokenA,
-                deposited_TokenB,
+                depositedTokenA,
+                depositedTokenB,
                 0,
                 0,
                 address(this),
@@ -187,9 +187,9 @@ contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
             (uint reserve0, uint reserve1, ) = IUniswapV2Pair(pair)
                 .getReserves();
             reserveA = tokenA == token0 ? reserve0 : reserve1;
-            ftoState = Status.Success;
+            FTOState = Status.Success;
         } else {
-            ftoState = Status.Failed;
+            FTOState = Status.Failed;
         }
     }
 
@@ -201,12 +201,12 @@ contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
         override
         returns (bool upkeepNeeded, bytes memory performData)
     {
-        upkeepNeeded = block.timestamp > end_time;
+        upkeepNeeded = block.timestamp > endTime;
         performData = "";
     }
 
     function performUpkeep(bytes calldata) external override {
-        require(block.timestamp > end_time, "fund rasing not finished.");
+        require(block.timestamp > endTime, "fund rasing not finished.");
         _perform();
     }
 }
