@@ -9,14 +9,22 @@ interface IYexFTOFactory {
         uint
     );
 
+    event BaseTokenAdded(
+        address indexed token
+    );
+
     function getPair(
         address tokenA,
         address tokenB
     ) external view returns (address);
 
     function allPairs(uint) external view returns (address);
+    function baseTokens(uint) external view returns (address);
 
     function allPairsLength() external view returns (uint);
+
+    function allBaseTokens() external view returns (address[] memory);
+    function isBaseToken(address) external view returns (bool);
 
     function createFTO(
         address tokenA,

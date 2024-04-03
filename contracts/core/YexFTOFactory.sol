@@ -51,8 +51,8 @@ contract ERC20Mintable is ERC20, Ownable {
 }
 
 contract YexFTOFactory is IYexFTOFactory, Ownable {
-    mapping(address => mapping(address => address)) public getPair;
     address[] public allPairs;
+    address[] public baseTokens;
 
     bytes32 public constant INIT_CODE_PAIR_HASH =
         keccak256(abi.encodePacked(type(YexFTOPair).creationCode));
@@ -61,6 +61,9 @@ contract YexFTOFactory is IYexFTOFactory, Ownable {
     mapping(address => mapping(address => bool)) private events_map;
 
     mapping(address => bool) public whitelists;
+    mapping(address => mapping(address => address)) public getPair;
+    mapping(address => bool) public isBaseToken;
+
     bool private noWhiteList;
 
     // for ChainLink automation
@@ -108,6 +111,14 @@ contract YexFTOFactory is IYexFTOFactory, Ownable {
         }
     }
 
+    function addBaseToken(address _baseToken) external onlyOwner {
+        if (!isBaseToken[_baseToken]) {
+            baseTokens.push(_baseToken);
+            isBaseToken[_baseToken] = true;
+            emit BaseTokenAdded(_baseToken);
+        }
+    }
+
     function createFTO(
         address tokenA,
         string calldata name,
@@ -119,6 +130,7 @@ contract YexFTOFactory is IYexFTOFactory, Ownable {
         ERC20Mintable tokenB_ = new ERC20Mintable(name, symbol);
         uint256 amount = _amount; // mint _amount tokenB
         address tokenB = address(tokenB_);
+
         pair = _createPair(
             tokenA,
             tokenB,
@@ -134,6 +146,10 @@ contract YexFTOFactory is IYexFTOFactory, Ownable {
         return allPairs.length;
     }
 
+    function allBaseTokens() external view returns (address[] memory) {
+        return baseTokens;
+    }
+
     function _createPair(
         address tokenA,
         address tokenB,
@@ -142,9 +158,12 @@ contract YexFTOFactory is IYexFTOFactory, Ownable {
         uint256 rasing_cycle
     ) internal returns (address pair) {
         require(tokenA != tokenB, "YexFTOFactory: IDENTICAL_ADDRESSES");
+        require(isBaseToken[tokenA], "YexFTOFactory: NOT_ALLOWED_BASE_TOKEN");
+
         (address token0, address token1) = tokenA < tokenB
             ? (tokenA, tokenB)
             : (tokenB, tokenA);
+
         require(token0 != address(0), "YexFTOFactory: ZERO_ADDRESS");
         require(
             getPair[token0][token1] == address(0),
