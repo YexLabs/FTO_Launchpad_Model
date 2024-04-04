@@ -35,47 +35,47 @@ contract ERC20Mintable is ERC20, Ownable {
 contract YexILOExample is ERC20("YexILOExampleLP", "ILOTestLP") {
     // Constant K value pool
 
-    IERC20 public immutable tokenA; // tokenA is used to subscribe tokenB
-    IERC20 public immutable tokenB; // tokenB is the issuer
+    IERC20 public immutable baseToken; // tokenA is used to subscribe fairToken
+    IERC20 public immutable fairToken; // fairToken is the issuer
 
-    uint256 public reserveA;
-    uint256 public reserveB;
+    uint256 public baseTokenReserve;
+    uint256 public fairTokenReserve;
 
-    mapping(address => uint256) public tokenA_deposit;
-    address[] public tokenA_deposit_address;
+    mapping(address => uint256) public baseTokenDeposit;
+    address[] public baseTokenDepositAddress;
 
-    address public tokenB_provider;
+    address public fairTokenProvider;
 
-    uint256 public deposited_TokenA;
-    uint256 public deposited_TokenB;
+    uint256 public depositedBaseToken;
+    uint256 public depositedFairToken;
 
     bool public rasing_paused;
 
      /// @notice Possible remove status
     enum RmInstruction {
         RemoveBoth,
-        RemoveTokenA,
-        RemoveTokenB
+        RemoveBaseToken,
+        RemoveFairToken
     }
 
     constructor() {
         // --------------- init token ---------------
         // init test token A
         // in demo, user can use test token A to subscribe token B
-        ERC20WithFaucet tokenA_ = new ERC20WithFaucet("TestTokenA", "TTA");
-        tokenA_.faucet();
+        ERC20WithFaucet _baseToken = new ERC20WithFaucet("TestBaseToken", "TBT");
+        _baseToken.faucet();
         // init test token B and transfer some test token B to the provider
         // in demo, provider will use token B to raising fund
-        tokenB_provider = msg.sender;
-        ERC20Mintable tokenB_ = new ERC20Mintable("TestTokenB", "TTB");
+        fairTokenProvider = msg.sender;
+        ERC20Mintable _fairToken = new ERC20Mintable("TestFairToken", "TFT");
         // unchecked {
-        uint256 amount = 1000000 * (10 ** tokenB_.decimals()); // mint 100000 tokenB
-        tokenB_.mint(msg.sender, amount);
+        uint256 amount = 1000000 * (10 ** _fairToken.decimals()); // mint 100000 tokenB
+        _fairToken.mint(msg.sender, amount);
         // }
         // after get token, provider and user both use `deposit` function to deposit token
         // --------------- init token ---------------
-        tokenA = IERC20(address(tokenA_));
-        tokenB = IERC20(address(tokenB_));
+        baseToken = IERC20(address(_baseToken));
+        fairToken = IERC20(address(_fairToken));
     }
 
     function mint(address to, uint256 amount) private {
@@ -87,50 +87,50 @@ contract YexILOExample is ERC20("YexILOExampleLP", "ILOTestLP") {
     }
 
     // Modifier to check token allowance
-    modifier checkAllowance(uint256 amountA, uint256 amountB) {
+    modifier checkAllowance(uint256 baseTokenAmount, uint256 fairTokenAmount) {
         require(
-            tokenA.allowance(msg.sender, address(this)) > amountA &&
-                tokenB.allowance(msg.sender, address(this)) > amountB,
+            baseToken.allowance(msg.sender, address(this)) > baseTokenAmount &&
+                fairToken.allowance(msg.sender, address(this)) > fairTokenAmount,
             "Not allowance token"
         );
         _;
     }
 
     function deposit(
-        uint256 amountA,
-        uint256 amountB
-    ) external payable checkAllowance(amountA, amountB) {
+        uint256 baseTokenAmount,
+        uint256 fairTokenAmount
+    ) external payable checkAllowance(baseTokenAmount, fairTokenAmount) {
         require(
-            amountA > 0 || amountB > 0,
+            baseTokenAmount > 0 || fairTokenAmount > 0,
             "deposit: INSUFFICIENT_INPUT_AMOUNT"
         );
         require(rasing_paused == false, "deposit: raising time is over");
 
-        if (amountA > 0) {
-            tokenA.transferFrom(msg.sender, address(this), amountA);
+        if (baseTokenAmount > 0) {
+            baseToken.transferFrom(msg.sender, address(this), baseTokenAmount);
 
-            if (tokenA_deposit[msg.sender] == 0) {
-                tokenA_deposit_address.push(address(msg.sender));
+            if (baseTokenDeposit[msg.sender] == 0) {
+                baseTokenDepositAddress.push(address(msg.sender));
             }
 
-            tokenA_deposit[msg.sender] = tokenA_deposit[msg.sender] + amountA;
+            baseTokenDeposit[msg.sender] = baseTokenDeposit[msg.sender] + baseTokenAmount;
 
-            deposited_TokenA = deposited_TokenA + amountA;
+            depositedBaseToken = depositedBaseToken + baseTokenAmount;
         }
-        if (amountB > 0) {
-            tokenB.transferFrom(msg.sender, address(this), amountB);
-            deposited_TokenB = deposited_TokenB + amountB;
+        if (fairTokenAmount > 0) {
+            fairToken.transferFrom(msg.sender, address(this), fairTokenAmount);
+            depositedFairToken = depositedFairToken + fairTokenAmount;
         }
-        // emit Deposit(msg.sender, batchid, amountA, amountB);
+        // emit Deposit(msg.sender, batchid, baseTokenAmount, fairTokenAmount);
     }
 
     // add liquidity, support add single side liquidity
     function addLiquidity(
-        uint256 amountA,
-        uint256 amountB
-    ) external checkAllowance(amountA, amountB) {
+        uint256 baseTokenAmount,
+        uint256 fairTokenAmount
+    ) external checkAllowance(baseTokenAmount, fairTokenAmount) {
         require(
-            amountA > 0 || amountB > 0,
+            baseTokenAmount > 0 || fairTokenAmount > 0,
             "addLiquidity: INSUFFICIENT_INPUT_AMOUNT"
         );
         require(rasing_paused == true, "deposit: raising time has not over");
@@ -139,23 +139,23 @@ contract YexILOExample is ERC20("YexILOExampleLP", "ILOTestLP") {
         require(lp_supply != 0, "pool has not initialized");
 
         uint256 amountLP;
-        if (amountA > 0) {
-            tokenA.transferFrom(msg.sender, address(this), amountA);
+        if (baseTokenAmount > 0) {
+            baseToken.transferFrom(msg.sender, address(this), baseTokenAmount);
             amountLP +=
-                (lp_supply * Math.sqrt((amountA + reserveA) * reserveA)) /
-                reserveA -
+                (lp_supply * Math.sqrt((baseTokenAmount + baseTokenReserve) * baseTokenReserve)) /
+                baseTokenReserve -
                 lp_supply;
             lp_supply += amountLP;
-            reserveA += amountA;
+            baseTokenReserve += baseTokenAmount;
         }
-        if (amountB > 0) {
-            tokenB.transferFrom(msg.sender, address(this), amountB);
+        if (fairTokenAmount > 0) {
+            fairToken.transferFrom(msg.sender, address(this), fairTokenAmount);
             amountLP +=
-                (lp_supply * Math.sqrt((amountB + reserveB) * reserveB)) /
-                reserveB -
+                (lp_supply * Math.sqrt((fairTokenAmount + fairTokenReserve) * fairTokenReserve)) /
+                fairTokenReserve -
                 lp_supply;
             // lp_supply += amountLP; // do not used, can comment out
-            reserveB += amountB;
+            fairTokenReserve += fairTokenAmount;
         }
         mint(msg.sender, amountLP);
     }
@@ -178,73 +178,73 @@ contract YexILOExample is ERC20("YexILOExampleLP", "ILOTestLP") {
         uint256 lp_supply = totalSupply();
         require(lp_supply > 0, "pool has not been initialized");
         burn(msg.sender, amountLP);
-        uint256 _reserveA = reserveA;
-        uint256 _reserveB = reserveB;
+        uint256 _baseTokenReserve = baseTokenReserve;
+        uint256 _fairTokenReserve = fairTokenReserve;
 
         if (remove == RmInstruction.RemoveBoth) {
-            tokenA.transfer(msg.sender, (amountLP * _reserveA) / lp_supply);
-            tokenB.transfer(msg.sender, (amountLP * _reserveB) / lp_supply);
-        } else if (remove == RmInstruction.RemoveTokenA) {
-            uint256 amount = _reserveA -
-                ((_reserveA *
+            baseToken.transfer(msg.sender, (amountLP * _baseTokenReserve) / lp_supply);
+            fairToken.transfer(msg.sender, (amountLP * _fairTokenReserve) / lp_supply);
+        } else if (remove == RmInstruction.RemoveBaseToken) {
+            uint256 amount = _baseTokenReserve -
+                ((_baseTokenReserve *
                     ((lp_supply - amountLP) * (lp_supply - amountLP))) /
                     lp_supply /
                     lp_supply);
-            tokenA.transfer(msg.sender, amount);
-        } else if (remove == RmInstruction.RemoveTokenB) {
-            uint256 amount = _reserveB -
-                ((_reserveB *
+            baseToken.transfer(msg.sender, amount);
+        } else if (remove == RmInstruction.RemoveFairToken) {
+            uint256 amount = _fairTokenReserve -
+                ((_fairTokenReserve *
                     ((lp_supply - amountLP) * (lp_supply - amountLP))) /
                     lp_supply /
                     lp_supply);
-            tokenB.transfer(msg.sender, amount);
+            fairToken.transfer(msg.sender, amount);
         }
     }
 
     function withdraw() external {
         require(
-            tokenB_provider == msg.sender,
+            fairTokenProvider == msg.sender,
             "only tokenB provider can withdraw"
         );
         require(rasing_paused == true, "fund rasing has not over");
         require(
-            deposited_TokenA == 0,
+            depositedBaseToken == 0,
             "only withdraw when the fund raising fails"
         );
-        tokenB.transfer(msg.sender, deposited_TokenB);
+        fairToken.transfer(msg.sender, depositedFairToken);
     }
 
     function _perform() internal {
-        if (deposited_TokenA != 0) {
+        if (depositedBaseToken != 0) {
             uint256 lp_supply = totalSupply();
             require(lp_supply == 0, "pool has been initialized");
-            reserveA = deposited_TokenA;
-            reserveB = deposited_TokenB;
+            baseTokenReserve = depositedBaseToken;
+            fairTokenReserve = depositedFairToken;
             // init lp supply
-            lp_supply = Math.sqrt(deposited_TokenA * deposited_TokenB);
+            lp_supply = Math.sqrt(depositedBaseToken * depositedFairToken);
 
-            // lp for tokenB_provider
-            mint(tokenB_provider, lp_supply >> 1);
-            console.log("mint lp supply %s to tokenB provider", lp_supply / 2);
+            // lp for fairTokenProvider
+            mint(fairTokenProvider, lp_supply >> 1);
+            console.log("mint lp supply %s to fair token provider", lp_supply / 2);
 
             // transfer LP to user who deposit tokenA
-            uint256 _length = tokenA_deposit_address.length;
+            uint256 _length = baseTokenDepositAddress.length;
             for (uint256 i = 0; i < _length; ) {
-                address user_addr = tokenA_deposit_address[i];
-                uint256 deposit_amount = tokenA_deposit[user_addr];
+                address user_addr = baseTokenDepositAddress[i];
+                uint256 deposit_amount = baseTokenDeposit[user_addr];
                 uint256 lp_amount = ((deposit_amount * lp_supply) >> 1) /
-                    reserveA;
+                    baseTokenReserve;
 
                 console.log(
-                    "deposit_amount %s reserveA %s lp_amount %s",
+                    "deposit_amount %s baseTokenReserve %s lp_amount %s",
                     deposit_amount,
-                    reserveA,
+                    baseTokenReserve,
                     lp_amount
                 );
-                // lp for tokenA deposit user
+                // lp for baseToken deposit user
                 mint(user_addr, lp_amount);
                 console.log(
-                    "mint lp amount %s to tokenA deposit user",
+                    "mint lp amount %s to baseToken deposit user",
                     lp_amount
                 );
                 // cannot realistically overflow on human timescales

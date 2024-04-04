@@ -13,13 +13,13 @@ import "../interfaces/IUniswapV2Pair.sol";
 import "../libraries/TransferHelper.sol";
 
 contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
-    address public tokenA; // tokenA is used to subscribe tokenB
-    address public tokenB; // tokenB is the issuer
+    address public baseToken; // tokenA is used to subscribe tokenB
+    address public fairToken; // tokenB is the issuer
 
-    address public tokenBProvider;
+    address public fairTokenProvider;
 
-    uint256 public depositedTokenA;
-    uint256 public depositedTokenB;
+    uint256 public depositedBaseToken;
+    uint256 public depositedFairToken;
 
     address public factory;
 
@@ -28,14 +28,14 @@ contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
 
     address public otherPool;
     uint256 public poolLP;
-    uint256 public reserveA;
+    uint256 public baseTokenReserve;
 
     Status public FTOState = Status.Processing;
 
-    mapping(address => uint256) public tokenADeposit;
+    mapping(address => uint256) public baseTokenDeposit;
     mapping(address => uint256) public claimedLp;
 
-    address[] public tokenADepositAddress;
+    address[] public baseTokenDepositAddress;
 
     error InvalidAmount();
     error InvalidUpdate();
@@ -54,60 +54,60 @@ contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
 
     // called once by the factory at time of deployment
     function initialize(
-        address _tokenA,
-        address _tokenB,
-        address _tokenBProvider,
+        address _baseToken,
+        address _fairToken,
+        address _fairTokenProvider,
         address _otherPool,
         uint256 rasingCycle
     ) external {
         require(msg.sender == factory, "YexFTOPair: FORBIDDEN"); // sufficient check
-        tokenA = _tokenA;
-        tokenB = _tokenB;
-        tokenBProvider = _tokenBProvider;
+        baseToken = _baseToken;
+        fairToken = _fairToken;
+        fairTokenProvider = _fairTokenProvider;
         endTime = block.timestamp + rasingCycle;
         otherPool = _otherPool;
     }
 
-    function depositTokenB(
+    function depositFairToken(
         address depositer,
         uint256 amount
     ) external override {
         require(block.timestamp < endTime, "deposit: raising time is over");
-        require(depositer == tokenBProvider, "only Project owner can deposit");
+        require(depositer == fairTokenProvider, "only Project owner can deposit");
         if (amount == 0) {
             revert InvalidAmount();
         }
-        uint256 balanceB = IERC20(tokenB).balanceOf(address(this));
-        if (balanceB != amount + depositedTokenB) {
+        uint256 balanceB = IERC20(fairToken).balanceOf(address(this));
+        if (balanceB != amount + depositedFairToken) {
             revert InvalidUpdate();
         }
-        depositedTokenB = depositedTokenB + amount;
+        depositedFairToken = depositedFairToken + amount;
         emit Deposit(depositer, amount);
     }
 
-    function depositTokenA(
+    function depositBaseToken(
         address depositer,
         uint256 amount
     ) external override {
         require(block.timestamp < endTime, "deposit: raising time is over");
         require(
-            depositer != tokenBProvider,
+            depositer != fairTokenProvider,
             "Project owner are not allowed to deposit with their launch"
         );
         if (amount == 0) {
             revert InvalidAmount();
         }
-        uint256 balanceA = IERC20(tokenA).balanceOf(address(this));
-        if (balanceA != amount + depositedTokenA) {
+        uint256 baseTokenBalance = IERC20(baseToken).balanceOf(address(this));
+        if (baseTokenBalance != amount + depositedBaseToken) {
             revert InvalidUpdate();
         }
 
-        if (tokenADeposit[depositer] == 0) {
-            tokenADepositAddress.push(depositer);
+        if (baseTokenDeposit[depositer] == 0) {
+            baseTokenDepositAddress.push(depositer);
         }
 
-        tokenADeposit[depositer] = tokenADeposit[depositer] + amount;
-        depositedTokenA = depositedTokenA + amount;
+        baseTokenDeposit[depositer] = baseTokenDeposit[depositer] + amount;
+        depositedBaseToken = depositedBaseToken + amount;
 
         // update participations
         IYexFTOFactory(factory).addEvent(depositer, address(this));
@@ -117,26 +117,26 @@ contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
 
     function withdraw(address withdrawer) external override lock {
         require(FTOState == Status.Failed, "fund rasing not failed.");
-        require(tokenBProvider == withdrawer, "only provider can withdraw");
-        IERC20(tokenB).transfer(withdrawer, depositedTokenB);
-        emit Withdraw(withdrawer, depositedTokenB);
+        require(fairTokenProvider == withdrawer, "only provider can withdraw");
+        IERC20(fairToken).transfer(withdrawer, depositedFairToken);
+        emit Withdraw(withdrawer, depositedFairToken);
     }
 
     function claimLP(address claimer) external lock {
         require(FTOState == Status.Success, "fund rasing not success.");
         require(
-            tokenBProvider == claimer || tokenADeposit[claimer] != 0,
-            "only tokenB provider or tokenA depositer can claim."
+            fairTokenProvider == claimer || baseTokenDeposit[claimer] != 0,
+            "only fair token provider or base token depositer can claim."
         );
         address pool_factory = IUniswapV2Router02(otherPool).factory();
-        address pair = IUniswapV2Factory(pool_factory).getPair(tokenA, tokenB);
+        address pair = IUniswapV2Factory(pool_factory).getPair(baseToken, fairToken);
         uint256 lp_amount = _calculateLPAmount(claimer);
         
         require(lp_amount > claimedLp[claimer], "Exceeded claimable amount");
         
         TransferHelper.safeTransfer(pair, claimer, lp_amount);
         claimedLp[claimer] = lp_amount;
-        tokenADeposit[claimer] = 0;
+        baseTokenDeposit[claimer] = 0;
 
         emit ClaimLP(claimer, lp_amount);
     }
@@ -151,25 +151,25 @@ contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
         address caller
     ) internal view returns (uint256 lp_amount) {
         lp_amount = 0;
-        if (tokenBProvider == caller) {
+        if (fairTokenProvider == caller) {
             lp_amount = poolLP >> 1;
         }
-        uint256 deposit_amount = tokenADeposit[caller];
+        uint256 deposit_amount = baseTokenDeposit[caller];
 
-        lp_amount = lp_amount + ((deposit_amount * poolLP) >> 1) / reserveA;
+        lp_amount = lp_amount + ((deposit_amount * poolLP) >> 1) / baseTokenReserve;
     }
 
     function _perform() internal {
-        if (depositedTokenA != 0) {
+        if (depositedBaseToken != 0) {
             // rasing success
             // addLiquidity
-            IERC20(tokenA).approve(otherPool, depositedTokenA);
-            IERC20(tokenB).approve(otherPool, depositedTokenB);
+            IERC20(baseToken).approve(otherPool, depositedBaseToken);
+            IERC20(fairToken).approve(otherPool, depositedFairToken);
             (, , uint liquidity) = IUniswapV2Router02(otherPool).addLiquidity(
-                tokenA,
-                tokenB,
-                depositedTokenA,
-                depositedTokenB,
+                baseToken,
+                fairToken,
+                depositedBaseToken,
+                depositedFairToken,
                 0,
                 0,
                 address(this),
@@ -178,15 +178,15 @@ contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
             poolLP = liquidity;
             address pool_factory = IUniswapV2Router02(otherPool).factory();
             address pair = IUniswapV2Factory(pool_factory).getPair(
-                tokenA,
-                tokenB
+                baseToken,
+                fairToken
             );
-            (address token0, ) = tokenA < tokenB
-                ? (tokenA, tokenB)
-                : (tokenB, tokenA);
+            (address token0, ) = baseToken < fairToken
+                ? (baseToken, fairToken)
+                : (fairToken, baseToken);
             (uint reserve0, uint reserve1, ) = IUniswapV2Pair(pair)
                 .getReserves();
-            reserveA = tokenA == token0 ? reserve0 : reserve1;
+            baseTokenReserve = baseToken == token0 ? reserve0 : reserve1;
             FTOState = Status.Success;
         } else {
             FTOState = Status.Failed;

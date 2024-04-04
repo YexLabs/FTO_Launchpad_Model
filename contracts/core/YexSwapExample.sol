@@ -37,42 +37,42 @@ contract ERC20WithFaucet is ERC20 {
 contract YexSwapPool is ERC20, IYexSwapPool {
     // Constant K value pool
     ///@notice The first token for exchange
-    IERC20 public tokenA;
+    IERC20 public baseToken;
 
     ///@notice The second token for exchange
-    IERC20 public tokenB;
+    IERC20 public fairToken;
 
-    ///@notice The reserve for tokenA
-    uint256 reserveA;
+    ///@notice The reserve for baseToken
+    uint256 baseTokenReserve;
 
-    ///@notice The reserve for tokenB
-    uint256 reserveB;
+    ///@notice The reserve for fairToken
+    uint256 fairTokenReserve;
 
     /// @notice Possible remove status
     enum RmInstruction {
         RemoveBoth,
-        RemoveTokenA,
-        RemoveTokenB
+        RemoveBaseToken,
+        RemoveFairToken
     }
 
     constructor(
         string memory name,
         string memory symbol,
-        address _tokenA,
-        address _tokenB
+        address _baseToken,
+        address _fairToken
     ) ERC20(name, symbol) {
         // feeTo = msg.sender;
-        ERC20WithFaucet tokenA_ = ERC20WithFaucet(_tokenA);
-        tokenA_.faucet();
-        ERC20WithFaucet tokenB_ = ERC20WithFaucet(_tokenB);
-        tokenB_.faucet();
+        ERC20WithFaucet baseToken_ = ERC20WithFaucet(_baseToken);
+        baseToken_.faucet();
+        ERC20WithFaucet fairToken_ = ERC20WithFaucet(_fairToken);
+        fairToken_.faucet();
 
-        tokenA = IERC20(_tokenA);
-        tokenB = IERC20(_tokenB);
+        baseToken = IERC20(_baseToken);
+        fairToken = IERC20(_fairToken);
 
         _initLiquidity(
-            tokenA.balanceOf(address(this)),
-            tokenB.balanceOf(address(this))
+            baseToken.balanceOf(address(this)),
+            fairToken.balanceOf(address(this))
         );
     }
 
@@ -87,12 +87,12 @@ contract YexSwapPool is ERC20, IYexSwapPool {
     // Modifier to check token allowance
     modifier checkAllowance(uint256 amountA, uint256 amountB) {
         require(
-            tokenA.allowance(msg.sender, address(this)) >= amountA,
-            "Not allowance tokenA"
+            baseToken.allowance(msg.sender, address(this)) >= amountA,
+            "Not allowance baseToken"
         );
         require(
-            tokenB.allowance(msg.sender, address(this)) >= amountB,
-            "Not allowance tokenB"
+            fairToken.allowance(msg.sender, address(this)) >= amountB,
+            "Not allowance fairToken"
         );
         _;
     }
@@ -105,20 +105,20 @@ contract YexSwapPool is ERC20, IYexSwapPool {
         );
         uint256 lp_supply = totalSupply();
         require(lp_supply == 0, "pool has been initialized");
-        reserveA = amountA;
-        reserveB = amountB;
-        console.log("pool %s init liquidity", name(), reserveA, reserveB);
+        baseTokenReserve = amountA;
+        fairTokenReserve = amountB;
+        console.log("pool %s init liquidity", name(), baseTokenReserve, fairTokenReserve);
         // mint to construtor
         mint(msg.sender, 10 ** 18);
     }
 
     //function to add the liquidity which also supports the functionality to add single side liquidity
     function addLiquidity(
-        uint256 amountA,
+        uint256 baseTokenAmount,
         uint256 amountB
-    ) external checkAllowance(amountA, amountB) {
+    ) external checkAllowance(baseTokenAmount, amountB) {
         require(
-            amountA > 0 || amountB > 0,
+            baseTokenAmount > 0 || amountB > 0,
             "addLiquidity: INSUFFICIENT_INPUT_AMOUNT"
         );
         uint256 lp_supply = totalSupply();
@@ -126,23 +126,23 @@ contract YexSwapPool is ERC20, IYexSwapPool {
 
         uint256 amountLP = 0;
 
-        if (amountA > 0) {
-            uint256 _reserveA = reserveA;
-            tokenA.transferFrom(msg.sender, address(this), amountA);
+        if (baseTokenAmount > 0) {
+            uint256 _baseTokenReserve = baseTokenReserve;
+            baseToken.transferFrom(msg.sender, address(this), baseTokenAmount);
             amountLP +=
-                (lp_supply * Math.sqrt((amountA + _reserveA) * _reserveA)) /
-                _reserveA -
+                (lp_supply * Math.sqrt((baseTokenAmount + _baseTokenReserve) * _baseTokenReserve)) /
+                _baseTokenReserve -
                 lp_supply;
-            reserveA += amountA;
+            baseTokenReserve += baseTokenAmount;
         }
         if (amountB > 0) {
-            uint256 _reserveB = reserveB;
-            tokenB.transferFrom(msg.sender, address(this), amountB);
+            uint256 _fairTokenReserve = fairTokenReserve;
+            fairToken.transferFrom(msg.sender, address(this), amountB);
             amountLP +=
-                (lp_supply * Math.sqrt((amountB + _reserveB) * _reserveB)) /
-                _reserveB -
+                (lp_supply * Math.sqrt((amountB + _fairTokenReserve) * _fairTokenReserve)) /
+                _fairTokenReserve -
                 lp_supply;
-            reserveB += amountB;
+            fairTokenReserve += amountB;
         }
         
         lp_supply += amountLP;
@@ -150,8 +150,8 @@ contract YexSwapPool is ERC20, IYexSwapPool {
         console.log(
             "pool %s add liquidity current reserves %s %s",
             name(),
-            reserveA,
-            reserveB
+            baseTokenReserve,
+            fairTokenReserve
         );
         mint(msg.sender, amountLP);
     }
@@ -184,28 +184,28 @@ contract YexSwapPool is ERC20, IYexSwapPool {
             "removeLiquidity: EXCEEDING_REMOVE_LIMIT"
         );
         burn(msg.sender, amountLP);
-        uint256 _reserveA = reserveA;
-        uint256 _reserveB = reserveB;
+        uint256 _baseTokenReserve = baseTokenReserve;
+        uint256 _fairTokenReserve = fairTokenReserve;
         //The case to remove both token A and token B
         if (remove == RmInstruction.RemoveBoth) {
-            tokenA.transfer(msg.sender, (amountLP * _reserveA) / lp_supply);
-            tokenB.transfer(msg.sender, (amountLP * _reserveB) / lp_supply);
+            baseToken.transfer(msg.sender, (amountLP * _baseTokenReserve) / lp_supply);
+            fairToken.transfer(msg.sender, (amountLP * _fairTokenReserve) / lp_supply);
         }
         //The case to just remove the token A
-        else if (remove == RmInstruction.RemoveTokenA) {
-            uint256 amount = _reserveA -
-                ((_reserveA *
+        else if (remove == RmInstruction.RemoveBaseToken) {
+            uint256 amount = _baseTokenReserve -
+                ((_baseTokenReserve *
                     ((lp_supply - amountLP) * (lp_supply - amountLP))) /
                     lp_supply /
                     lp_supply);
-            tokenA.transfer(msg.sender, amount);
-        } else if (remove == RmInstruction.RemoveTokenB) {
-            uint256 amount = _reserveB -
-                ((_reserveB *
+            baseToken.transfer(msg.sender, amount);
+        } else if (remove == RmInstruction.RemoveFairToken) {
+            uint256 amount = _fairTokenReserve -
+                ((_fairTokenReserve *
                     ((lp_supply - amountLP) * (lp_supply - amountLP))) /
                     lp_supply /
                     lp_supply);
-            tokenB.transfer(msg.sender, amount);
+            fairToken.transfer(msg.sender, amount);
         }
     }
 
@@ -220,19 +220,19 @@ contract YexSwapPool is ERC20, IYexSwapPool {
         uint256 amountA,
         uint256 amountB
     ) internal returns (uint256 amountAOut, uint256 amountBOut) {
-        uint256 kValue = reserveA * reserveB;
+        uint256 kValue = baseTokenReserve * fairTokenReserve;
         if (amountA > 0) {
-            uint256 rb = reserveB;
-            reserveA += amountA;
-            reserveB = kValue / reserveA;
+            uint256 rb = fairTokenReserve;
+            baseTokenReserve += amountA;
+            fairTokenReserve = kValue / baseTokenReserve;
 
-            amountBOut = rb - reserveB;
+            amountBOut = rb - fairTokenReserve;
         } else {
-            uint256 ra = reserveA;
-            reserveB += amountB;
-            reserveA = kValue / reserveB;
+            uint256 ra = baseTokenReserve;
+            fairTokenReserve += amountB;
+            baseTokenReserve = kValue / fairTokenReserve;
 
-            amountAOut = ra - reserveA;
+            amountAOut = ra - baseTokenReserve;
         }
     }
 
@@ -243,8 +243,8 @@ contract YexSwapPool is ERC20, IYexSwapPool {
         override
         returns (uint256 _reserve0, uint256 _reserve1)
     {
-        _reserve0 = reserveA;
-        _reserve1 = reserveB;
+        _reserve0 = baseTokenReserve;
+        _reserve1 = fairTokenReserve;
     }
 }
 
@@ -264,99 +264,99 @@ contract YexSwapExample is YexSwapPool, AutomationCompatibleInterface {
 
     struct TokenInfo {
         /// @notice mapping for tokenA address to amount
-        mapping(address => uint256) deposited_tokenA;
-        /// @notice mapping for tokenB address to amount
-        mapping(address => uint256) deposited_tokenB;
-        /// @notice all the addresses stored the token A
-        address[] tokenA_deposit_address;
-        /// @notice all the addresses stored the token A
-        address[] tokenB_deposit_address;
-        /// @notice every transaction volume for each batch of token A
-        uint256 batch_tokenA;
-        /// @notice every transaction volume for each batch of token B
-        uint256 batch_tokenB;
+        mapping(address => uint256) depositedBaseToken;
+        /// @notice mapping for fairToken address to amount
+        mapping(address => uint256) depositedFairToken;
+        /// @notice all the addresses stored the base token
+        address[] baseTokenDepositAddress;
+        /// @notice all the addresses stored the fair token
+        address[] fairTokenDepositAddress;
+        /// @notice every transaction volume for each batch of base token
+        uint256 batchBaseToken;
+        /// @notice every transaction volume for each batch of fair token
+        uint256 batchFairToken;
         /// @notice record the start_time for the batch
         uint256 start_time;
     }
 
     struct PoolInfo {
-        uint256 min_reserveA;
-        uint256 min_reserveB;
+        uint256 minBaseTokenReserve;
+        uint256 minFairTokenReserve;
         IYexSwapPool min_pool;
-        uint256 max_reserveA;
-        uint256 max_reserveB;
-        IYexSwapPool max_pool;
+        uint256 maxBaseTokenReserve;
+        uint256 maxFairTokenReserve;
+        IYexSwapPool maxPool;
     }
 
-    mapping(uint256 => TokenInfo) batch_info;
+    mapping(uint256 => TokenInfo) batchInfo;
 
     constructor(
-        address _tokenA,
-        address _tokenB
-    ) YexSwapPool("Pool1", "P1", _tokenA, _tokenB) {
+        address _baseToken,
+        address _fairToken
+    ) YexSwapPool("Pool1", "P1", _baseToken, _fairToken) {
         // create inner pool to simulate a dex
-        YexSwapPool pool2_ = new YexSwapPool("Pool2", "P2", _tokenA, _tokenB);
+        YexSwapPool pool2_ = new YexSwapPool("Pool2", "P2", _baseToken, _fairToken);
 
         pool1 = IYexSwapPool(address(this));
         pool2 = IYexSwapPool(address(pool2_));
 
-        tokenA = IERC20(_tokenA);
-        tokenB = IERC20(_tokenB);
+        baseToken = IERC20(_baseToken);
+        fairToken = IERC20(_fairToken);
     }
 
     function deposit(
-        uint256 amountA,
-        uint256 amountB
-    ) external checkAllowance(amountA, amountB) {
+        uint256 baseTokenAmount,
+        uint256 fairTokenAmount
+    ) external checkAllowance(baseTokenAmount, fairTokenAmount) {
         require(
-            amountA > 0 || amountB > 0,
+            baseTokenAmount > 0 || fairTokenAmount > 0,
             "deposit: INSUFFICIENT_INPUT_AMOUNT"
         );
 
         uint256 current_batch = batchid;
 
         // setup new batch start time
-        if (batch_info[current_batch].start_time == 0) {
-            batch_info[current_batch].start_time = block.timestamp;
+        if (batchInfo[current_batch].start_time == 0) {
+            batchInfo[current_batch].start_time = block.timestamp;
         }
 
-        if (amountA > 0) {
-            tokenA.transferFrom(msg.sender, address(this), amountA);
+        if (baseTokenAmount > 0) {
+            baseToken.transferFrom(msg.sender, address(this), baseTokenAmount);
 
             // first deposit, add into deposit array
-            if (batch_info[current_batch].deposited_tokenA[msg.sender] == 0) {
-                batch_info[current_batch].tokenA_deposit_address.push(
+            if (batchInfo[current_batch].depositedBaseToken[msg.sender] == 0) {
+                batchInfo[current_batch].baseTokenDepositAddress.push(
                     address(msg.sender)
                 );
             }
 
-            batch_info[current_batch].deposited_tokenA[msg.sender] =
-                batch_info[current_batch].deposited_tokenA[msg.sender] +
-                amountA;
+            batchInfo[current_batch].depositedBaseToken[msg.sender] =
+                batchInfo[current_batch].depositedBaseToken[msg.sender] +
+                baseTokenAmount;
 
-            batch_info[current_batch].batch_tokenA =
-                batch_info[current_batch].batch_tokenA +
-                amountA;
+            batchInfo[current_batch].batchBaseToken =
+                batchInfo[current_batch].batchBaseToken +
+                baseTokenAmount;
         }
-        if (amountB > 0) {
-            tokenB.transferFrom(msg.sender, address(this), amountB);
+        if (fairTokenAmount > 0) {
+            fairToken.transferFrom(msg.sender, address(this), fairTokenAmount);
 
             // first deposit, add into deposit array
-            if (batch_info[current_batch].deposited_tokenB[msg.sender] == 0) {
-                batch_info[current_batch].tokenB_deposit_address.push(
+            if (batchInfo[current_batch].depositedFairToken[msg.sender] == 0) {
+                batchInfo[current_batch].fairTokenDepositAddress.push(
                     address(msg.sender)
                 );
             }
 
-            batch_info[current_batch].deposited_tokenB[msg.sender] =
-                batch_info[current_batch].deposited_tokenB[msg.sender] +
-                amountB;
+            batchInfo[current_batch].depositedFairToken[msg.sender] =
+                batchInfo[current_batch].depositedFairToken[msg.sender] +
+                fairTokenAmount;
 
-            batch_info[current_batch].batch_tokenB =
-                batch_info[current_batch].batch_tokenB +
-                amountB;
+            batchInfo[current_batch].batchFairToken =
+                batchInfo[current_batch].batchFairToken +
+                fairTokenAmount;
         }
-        // emit Deposit(msg.sender, batchid, amountA, amountB);
+        // emit Deposit(msg.sender, batchid, baseTokenAmount, fairTokenAmount);
     }
 
     function checkUpkeep(
@@ -368,98 +368,98 @@ contract YexSwapExample is YexSwapPool, AutomationCompatibleInterface {
         returns (bool upkeepNeeded, bytes memory performData)
     {
         upkeepNeeded =
-            (block.timestamp - batch_info[batchid].start_time) > 10 &&
-            (batch_info[batchid].batch_tokenA > 0 ||
-                batch_info[batchid].batch_tokenB > 0);
+            (block.timestamp - batchInfo[batchid].start_time) > 10 &&
+            (batchInfo[batchid].batchBaseToken > 0 ||
+                batchInfo[batchid].batchFairToken > 0);
         performData = "";
     }
 
-    // 1. calculate min_pool and max_pool from pool list
-    // 2. calculate delta amount to swap with min_pool or max_pool
+    // 1. calculate min_pool and maxPool from pool list
+    // 2. calculate delta amount to swap with min_pool or maxPool
     // 3. transfer token to users
     function performUpkeep(bytes calldata /* performData */) external override {
-        TokenInfo storage currentTokenInfo = batch_info[batchid];
+        TokenInfo storage currentTokenInfo = batchInfo[batchid];
         require(
             (block.timestamp - currentTokenInfo.start_time) > 10 &&
-                (currentTokenInfo.batch_tokenA > 0 ||
-                    currentTokenInfo.batch_tokenB > 0),
+                (currentTokenInfo.batchBaseToken > 0 ||
+                    currentTokenInfo.batchFairToken > 0),
             "not need to perform"
         );
 
         // setup a new batch
         // batch_start_time[currentBatch] = block.timestamp;
         //this is the same look up we are having with require statement. why do we need to duplicate?
-        uint256 balanceA = currentTokenInfo.batch_tokenA;
-        uint256 balanceB = currentTokenInfo.batch_tokenB;
-        uint256 balanceA_ = balanceA;
-        uint256 balanceB_ = balanceB;
+        uint256 baseTokenBalance = currentTokenInfo.batchBaseToken;
+        uint256 fairTokenBalance = currentTokenInfo.batchFairToken;
+        uint256 baseTokenBalance_ = baseTokenBalance;
+        uint256 fairTokenBalance_ = fairTokenBalance;
 
         console.log(
-            "before auction, balanceA:%s balanceB:%s",
-            balanceA_,
-            balanceB_
+            "before auction, baseTokenBalance:%s fairTokenBalance:%s",
+            baseTokenBalance_,
+            fairTokenBalance_
         );
 
         PoolInfo memory poolInfo = _getCompareReserves();
 
         // 1. auction price is greater than maximum price
         if (
-            ((balanceB * poolInfo.max_reserveA)) >
-            (poolInfo.max_reserveB * balanceA)
+            ((fairTokenBalance * poolInfo.maxBaseTokenReserve)) >
+            (poolInfo.maxFairTokenReserve * baseTokenBalance)
         ) {
             uint256 delta;
-            delta = (balanceB -
-                (balanceA * poolInfo.min_reserveB) /
-                poolInfo.min_reserveA);
-            balanceB_ -= delta;
+            delta = (fairTokenBalance -
+                (baseTokenBalance * poolInfo.minFairTokenReserve) /
+                poolInfo.minBaseTokenReserve);
+            fairTokenBalance_ -= delta;
             // swap using the pool with the minimum price
             if (address(poolInfo.min_pool) == address(this)) {
                 (delta, ) = _swap(0, delta);
             } else {
                 (delta, ) = poolInfo.min_pool.swap(0, delta);
             }
-            balanceA_ += delta;
+            baseTokenBalance_ += delta;
         } else if (
-            ((balanceB * poolInfo.min_reserveA)) <
-            (poolInfo.min_reserveB * balanceA)
+            ((fairTokenBalance * poolInfo.minBaseTokenReserve)) <
+            (poolInfo.minFairTokenReserve * baseTokenBalance)
         ) {
             //2. auction price is less than minimum price
             uint256 delta;
-            delta = (balanceA -
-                (balanceB * poolInfo.max_reserveA) /
-                poolInfo.max_reserveB);
-            balanceA_ -= delta;
+            delta = (baseTokenBalance -
+                (fairTokenBalance * poolInfo.maxBaseTokenReserve) /
+                poolInfo.maxFairTokenReserve);
+            baseTokenBalance_ -= delta;
             // swap using the pool with the maximum price
-            if (address(poolInfo.max_pool) == address(this)) {
+            if (address(poolInfo.maxPool) == address(this)) {
                 (, delta) = _swap(delta, 0);
             } else {
-                (, delta) = poolInfo.max_pool.swap(delta, 0);
+                (, delta) = poolInfo.maxPool.swap(delta, 0);
             }
-            balanceB_ += delta;
+            fairTokenBalance_ += delta;
         }
 
         console.log(
-            "after auction, balanceA:%s balanceB:%s",
-            balanceA_,
-            balanceB_
+            "after auction, baseTokenBalance:%s fairTokenBalance:%s",
+            baseTokenBalance_,
+            fairTokenBalance_
         );
 
-        uint256 len = currentTokenInfo.tokenB_deposit_address.length;
-        // transfer tokenA to user who deposit tokenB
+        uint256 len = currentTokenInfo.fairTokenDepositAddress.length;
+        // transfer tokenA to user who deposit fairToken
         for (uint256 i = 0; i < len; ) {
-            address user_addr = currentTokenInfo.tokenB_deposit_address[i];
-            uint256 deposit_amount = currentTokenInfo.deposited_tokenB[
+            address user_addr = currentTokenInfo.fairTokenDepositAddress[i];
+            uint256 deposit_amount = currentTokenInfo.depositedFairToken[
                 user_addr
             ];
-            uint256 withdraw_amount = (deposit_amount * balanceA_) / balanceB;
+            uint256 withdraw_amount = (deposit_amount * baseTokenBalance_) / fairTokenBalance;
             console.log(
-                "transfer tokenA %s to user who deposit tokenB",
+                "transfer baseToken %s to user who deposit fairToken",
                 withdraw_amount
             );
-            tokenA.transfer(user_addr, withdraw_amount);
+            baseToken.transfer(user_addr, withdraw_amount);
 
             // delete batchInfo's mapping
-            delete currentTokenInfo.deposited_tokenB[user_addr];
+            delete currentTokenInfo.depositedFairToken[user_addr];
 
             // cannot realistically overflow on human timescales
             unchecked {
@@ -467,65 +467,65 @@ contract YexSwapExample is YexSwapPool, AutomationCompatibleInterface {
             }
         }
 
-        // transfer tokenB to user who deposit tokenA
-        len = currentTokenInfo.tokenA_deposit_address.length;
+        // transfer fairToken to user who deposit baseToken
+        len = currentTokenInfo.baseTokenDepositAddress.length;
         for (uint256 i = 0; i < len; ) {
-            address user_addr = currentTokenInfo.tokenA_deposit_address[i];
-            uint256 deposit_amount = currentTokenInfo.deposited_tokenA[
+            address user_addr = currentTokenInfo.baseTokenDepositAddress[i];
+            uint256 deposit_amount = currentTokenInfo.depositedBaseToken[
                 user_addr
             ];
-            uint256 withdraw_amount = (deposit_amount * balanceB_) / balanceA;
+            uint256 withdraw_amount = (deposit_amount * fairTokenBalance_) / baseTokenBalance;
             console.log(
-                "transfer tokenB %s to user who deposit tokenA",
+                "transfer fiarToken %s to user who deposit baseToken",
                 withdraw_amount
             );
-            tokenB.transfer(user_addr, withdraw_amount);
+            fairToken.transfer(user_addr, withdraw_amount);
 
             // delete batchInfo's mapping
-            delete currentTokenInfo.deposited_tokenA[user_addr];
+            delete currentTokenInfo.depositedBaseToken[user_addr];
 
             // cannot realistically overflow on human timescales
             unchecked {
                 ++i;
             }
         }
-        // console.log("before %s", batch_info[currentBatch].start_time);
+        // console.log("before %s", batchInfo[currentBatch].start_time);
 
         // delete batchInfo
-        delete (batch_info[batchid]);
+        delete (batchInfo[batchid]);
 
-        // console.log("after %s", batch_info[currentBatch].start_time);
+        // console.log("after %s", batchInfo[currentBatch].start_time);
         batchid += 1;
     }
 
     /// @notice need support more pools
     function _getCompareReserves() internal view returns (PoolInfo memory) {
         // pool reserve
-        (uint256 pool1_reserveA, uint256 pool1_reserveB) = getReserves();
-        (uint256 pool2_reserveA, uint256 pool2_reserveB) = pool2.getReserves();
+        (uint256 pool1BaseTokenReserve, uint256 pool1FairTokenReserve) = getReserves();
+        (uint256 pool2BaseTokenReserve, uint256 pool2FairTokenReserve) = pool2.getReserves();
 
         // compare B/A
         if (
-            (pool2_reserveA * pool1_reserveB) >
-            (pool2_reserveB * pool1_reserveA)
+            (pool2BaseTokenReserve * pool1FairTokenReserve) >
+            (pool2FairTokenReserve * pool1BaseTokenReserve)
         ) {
             return
                 PoolInfo(
-                    pool2_reserveA,
-                    pool2_reserveB,
+                    pool2BaseTokenReserve,
+                    pool2FairTokenReserve,
                     pool2,
-                    pool1_reserveA,
-                    pool1_reserveB,
+                    pool1BaseTokenReserve,
+                    pool1FairTokenReserve,
                     pool1
                 );
         } else {
             return
                 PoolInfo(
-                    pool1_reserveA,
-                    pool1_reserveB,
+                    pool1BaseTokenReserve,
+                    pool1FairTokenReserve,
                     pool1,
-                    pool2_reserveA,
-                    pool2_reserveB,
+                    pool2BaseTokenReserve,
+                    pool2FairTokenReserve,
                     pool2
                 );
         }
@@ -535,93 +535,93 @@ contract YexSwapExample is YexSwapPool, AutomationCompatibleInterface {
         address token,
         uint256 amountIn
     ) external view returns (uint256) {
-        uint256 balanceA = batch_info[batchid].batch_tokenA;
-        uint256 balanceB = batch_info[batchid].batch_tokenB;
-        uint256 balanceB_before_swap;
-        uint256 balanceA_before_swap;
-        if (token == address(tokenA)) {
-            balanceA_before_swap = balanceA + amountIn;
-            balanceB_before_swap = balanceB;
+        uint256 baseTokenBalance = batchInfo[batchid].batchBaseToken;
+        uint256 fairTokenBalance = batchInfo[batchid].batchFairToken;
+        uint256 fairTokenBalanceBeforeSwap;
+        uint256 baseTokenBalanceBeforeSwap;
+        if (token == address(baseToken)) {
+            baseTokenBalanceBeforeSwap = baseTokenBalance + amountIn;
+            fairTokenBalanceBeforeSwap = fairTokenBalance;
         } else {
-            balanceB_before_swap = balanceB + amountIn;
-            balanceA_before_swap = balanceA;
+            fairTokenBalanceBeforeSwap = fairTokenBalance + amountIn;
+            baseTokenBalanceBeforeSwap = baseTokenBalance;
         }
-        uint256 balanceA_ = balanceA_before_swap;
-        uint256 balanceB_ = balanceB_before_swap;
+        uint256 baseTokenBalance_ = baseTokenBalanceBeforeSwap;
+        uint256 fairTokenBalance_ = fairTokenBalanceBeforeSwap;
 
         console.log(
-            "before swap, balanceA:%s balanceB:%s",
-            balanceA_before_swap,
-            balanceB_before_swap
+            "before swap, baseTokenBalance:%s fairTokenBalance:%s",
+            baseTokenBalanceBeforeSwap,
+            fairTokenBalanceBeforeSwap
         );
 
         PoolInfo memory poolInfo = _getCompareReserves();
 
         // 1. The case for auction > max
         if (
-            ((balanceB_before_swap * poolInfo.max_reserveA)) >
-            (poolInfo.max_reserveB * balanceA_before_swap)
+            ((fairTokenBalanceBeforeSwap * poolInfo.maxBaseTokenReserve)) >
+            (poolInfo.maxFairTokenReserve * baseTokenBalanceBeforeSwap)
         ) {
             // part of balance just swap
             uint256 delta;
-            delta = (balanceB_before_swap -
-                (balanceA_before_swap * poolInfo.min_reserveB) /
-                poolInfo.min_reserveA);
-            balanceB_ -= delta;
+            delta = (fairTokenBalanceBeforeSwap -
+                (baseTokenBalanceBeforeSwap * poolInfo.minFairTokenReserve) /
+                poolInfo.minBaseTokenReserve);
+            fairTokenBalance_ -= delta;
             (delta, ) = getOptionalAmountOut(
                 0,
                 delta,
-                poolInfo.min_reserveA,
-                poolInfo.min_reserveB
+                poolInfo.minBaseTokenReserve,
+                poolInfo.minFairTokenReserve
             );
-            balanceA_ += delta;
+            baseTokenBalance_ += delta;
         } else if (
-            ((balanceB_before_swap * poolInfo.min_reserveA)) <
-            (poolInfo.min_reserveB * balanceA_before_swap)
+            ((fairTokenBalanceBeforeSwap * poolInfo.minBaseTokenReserve)) <
+            (poolInfo.minFairTokenReserve * baseTokenBalanceBeforeSwap)
         ) {
             uint256 delta;
-            delta = (balanceA_before_swap -
-                (balanceB_before_swap * poolInfo.max_reserveA) /
-                poolInfo.max_reserveB);
-            balanceA_ -= delta;
+            delta = (baseTokenBalanceBeforeSwap -
+                (fairTokenBalanceBeforeSwap * poolInfo.maxBaseTokenReserve) /
+                poolInfo.maxFairTokenReserve);
+            baseTokenBalance_ -= delta;
             (, delta) = getOptionalAmountOut(
                 delta,
                 0,
-                poolInfo.max_reserveA,
-                poolInfo.max_reserveB
+                poolInfo.maxBaseTokenReserve,
+                poolInfo.maxFairTokenReserve
             );
-            balanceB_ += delta;
+            fairTokenBalance_ += delta;
         }
 
         console.log(
-            "expected auction, balanceA:%s balanceB:%s",
-            balanceA_,
-            balanceB_
+            "expected auction, baseTokenBalance:%s fairTokenBalance:%s",
+            baseTokenBalance_,
+            fairTokenBalance_
         );
-        if (token == address(tokenA)) {
-            return (amountIn * balanceB_) / balanceA_before_swap;
+        if (token == address(baseToken)) {
+            return (amountIn * fairTokenBalance_) / baseTokenBalanceBeforeSwap;
         } else {
-            return (amountIn * balanceA_) / balanceB_before_swap;
+            return (amountIn * baseTokenBalance_) / fairTokenBalanceBeforeSwap;
         }
     }
 
     function getOptionalAmountOut(
-        uint256 amountA,
-        uint256 amountB,
-        uint256 reserveA,
-        uint256 reserveB
-    ) internal pure returns (uint256 amountAOut, uint256 amountBOut) {
-        uint256 kValue = reserveA * reserveB;
-        if (amountA > 0) {
-            uint256 rb = reserveB;
-            reserveA += amountA;
-            reserveB = kValue / reserveA;
-            amountBOut = rb - reserveB;
+        uint256 baseTokenAmount,
+        uint256 fairTokenAmount,
+        uint256 baseTokenReserve,
+        uint256 fairTokenReserve
+    ) internal pure returns (uint256 baseTokenOut, uint256 fiarTokenOut) {
+        uint256 kValue = baseTokenReserve * fairTokenReserve;
+        if (baseTokenAmount > 0) {
+            uint256 rb = fairTokenReserve;
+            baseTokenReserve += baseTokenAmount;
+            fairTokenReserve = kValue / baseTokenReserve;
+            fiarTokenOut = rb - fairTokenReserve;
         } else {
-            uint256 ra = reserveA;
-            reserveB += amountB;
-            reserveA = kValue / reserveB;
-            amountAOut = ra - reserveA;
+            uint256 ra = baseTokenReserve;
+            fairTokenReserve += fairTokenAmount;
+            baseTokenReserve = kValue / fairTokenReserve;
+            baseTokenOut = ra - baseTokenReserve;
         }
     }
 }

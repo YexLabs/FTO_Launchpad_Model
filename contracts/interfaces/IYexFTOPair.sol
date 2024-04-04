@@ -12,9 +12,9 @@ interface IYexFTOPair is AutomationCompatibleInterface {
     event Withdraw(address indexed withdrawer, uint);
     event ClaimLP(address indexed claimer, uint);
 
-    function depositTokenA(address depositer, uint256 amountA) external;
+    function depositBaseToken(address depositer, uint256 amount) external;
 
-    function depositTokenB(address depositer, uint256 amountB) external;
+    function depositFairToken(address depositer, uint256 amount) external;
 
     function withdraw(address withdrawer) external;
 
@@ -22,9 +22,9 @@ interface IYexFTOPair is AutomationCompatibleInterface {
 
     function claimableLP(address claimer) external view returns (uint256);
 
-    function tokenBProvider() external view returns (address);
+    function fairTokenProvider() external view returns (address);
 
-    function tokenADeposit(address) external view returns (uint256);
+    function baseTokenDeposit(address) external view returns (uint256);
 
     function FTOState() external view returns (Status);
 }

@@ -14,8 +14,8 @@ interface IYexFTOFactory {
     );
 
     function getPair(
-        address tokenA,
-        address tokenB
+        address baseToken,
+        address fairToken
     ) external view returns (address);
 
     function allPairs(uint) external view returns (address);
@@ -27,7 +27,7 @@ interface IYexFTOFactory {
     function isBaseToken(address) external view returns (bool);
 
     function createFTO(
-        address tokenA,
+        address baseToken,
         string calldata name,
         string calldata symbol,
         uint256 amount,
