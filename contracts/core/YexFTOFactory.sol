@@ -51,8 +51,8 @@ contract ERC20Mintable is ERC20, Ownable {
 }
 
 contract YexFTOFactory is IYexFTOFactory, Ownable {
-    mapping(address => mapping(address => address)) public getPair;
     address[] public allPairs;
+    address[] public baseTokens;
 
     bytes32 public constant INIT_CODE_PAIR_HASH =
         keccak256(abi.encodePacked(type(YexFTOPair).creationCode));
@@ -61,6 +61,9 @@ contract YexFTOFactory is IYexFTOFactory, Ownable {
     mapping(address => mapping(address => bool)) private events_map;
 
     mapping(address => bool) public whitelists;
+    mapping(address => mapping(address => address)) public getPair;
+    mapping(address => bool) public isBaseToken;
+
     bool private noWhiteList;
 
     // for ChainLink automation
@@ -81,7 +84,7 @@ contract YexFTOFactory is IYexFTOFactory, Ownable {
 
     function addEvent(address depositer, address ftoPair) public override {
         require(
-            IYexFTOPair(ftoPair).tokenA_deposit(depositer) != 0,
+            IYexFTOPair(ftoPair).baseTokenDeposit(depositer) != 0,
             "Not participate in this rasing."
         );
         if (events_map[depositer][ftoPair] == false) {
@@ -108,43 +111,59 @@ contract YexFTOFactory is IYexFTOFactory, Ownable {
         }
     }
 
+    function addBaseToken(address _baseToken) external onlyOwner {
+        if (!isBaseToken[_baseToken]) {
+            baseTokens.push(_baseToken);
+            isBaseToken[_baseToken] = true;
+            emit BaseTokenAdded(_baseToken);
+        }
+    }
+
     function createFTO(
-        address tokenA,
+        address baseToken,
         string calldata name,
         string calldata symbol,
         uint256 _amount,
         address poolHandler,
-        uint256 rasing_cycle
+        uint256 raisingCycle
     ) external override onlyWhitelistCaller returns (address pair) {
-        ERC20Mintable tokenB_ = new ERC20Mintable(name, symbol);
-        uint256 amount = _amount; // mint _amount tokenB
-        address tokenB = address(tokenB_);
+        ERC20Mintable _fairToken = new ERC20Mintable(name, symbol);
+        uint256 amount = _amount; // mint _amount fairToken
+        address fairToken = address(_fairToken);
+
         pair = _createPair(
-            tokenA,
-            tokenB,
+            baseToken,
+            fairToken,
             msg.sender,
             poolHandler,
-            rasing_cycle
+            raisingCycle
         );
-        tokenB_.mint(pair, amount);
-        IYexFTOPair(pair).depositTokenB(msg.sender, amount);
+        _fairToken.mint(pair, amount);
+        IYexFTOPair(pair).depositFairToken(msg.sender, amount);
     }
 
     function allPairsLength() external view override returns (uint) {
         return allPairs.length;
     }
 
+    function allBaseTokens() external view returns (address[] memory) {
+        return baseTokens;
+    }
+
     function _createPair(
-        address tokenA,
-        address tokenB,
-        address tokenB_provider,
+        address baseToken,
+        address fairToken,
+        address fairTokenProvider,
         address swapHandler,
-        uint256 rasing_cycle
+        uint256 raisingCycle
     ) internal returns (address pair) {
-        require(tokenA != tokenB, "YexFTOFactory: IDENTICAL_ADDRESSES");
-        (address token0, address token1) = tokenA < tokenB
-            ? (tokenA, tokenB)
-            : (tokenB, tokenA);
+        require(baseToken != fairToken, "YexFTOFactory: IDENTICAL_ADDRESSES");
+        require(isBaseToken[baseToken], "YexFTOFactory: NOT_ALLOWED_BASE_TOKEN");
+
+        (address token0, address token1) = baseToken < fairToken
+            ? (baseToken, fairToken)
+            : (fairToken, baseToken);
+
         require(token0 != address(0), "YexFTOFactory: ZERO_ADDRESS");
         require(
             getPair[token0][token1] == address(0),
@@ -156,11 +175,11 @@ contract YexFTOFactory is IYexFTOFactory, Ownable {
             pair := create2(0, add(bytecode, 32), mload(bytecode), salt)
         }
         YexFTOPair(pair).initialize(
-            tokenA,
-            tokenB,
-            tokenB_provider,
+            baseToken,
+            fairToken,
+            fairTokenProvider,
             swapHandler,
-            rasing_cycle
+            raisingCycle
         );
         getPair[token0][token1] = pair;
         getPair[token1][token0] = pair; // populate mapping in the reverse direction

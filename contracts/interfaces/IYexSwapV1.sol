@@ -6,22 +6,22 @@ interface IYexSwapV1 {
     function feeTo() external view returns (address);
 
     // function poolInfoMap(
-    //     address tokenA,
-    //     address tokenB
+    //     address baseToken,
+    //     address fairToken
     // ) external view returns (poolInfo memory);
 
     // function createPool(
-    //     address tokenA,
-    //     address tokenB,
-    //     uint112 reserveA,
-    //     uint112 reserveB,
+    //     address baseToken,
+    //     address fairToken,
+    //     uint112 baseTokenReserve,
+    //     uint112 fairTokenReserve,
     //     PoolType poolType
     // ) external returns (address);
 
     function addLiquidity(
-        address tokenA,
-        address tokenB,
-        uint256 amountA,
-        uint256 amountB
+        address baseToken,
+        address fairToken,
+        uint256 baseTokenAmount,
+        uint256 fairTokenAmount
     ) external returns (uint256 liquidity);
 }

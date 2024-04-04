@@ -13,29 +13,29 @@ import "../interfaces/IUniswapV2Pair.sol";
 import "../libraries/TransferHelper.sol";
 
 contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
-    address public tokenA; // tokenA is used to subscribe tokenB
-    address public tokenB; // tokenB is the issuer
+    address public baseToken; // tokenA is used to subscribe tokenB
+    address public fairToken; // tokenB is the issuer
 
-    address public tokenB_provider;
+    address public fairTokenProvider;
 
-    uint256 public deposited_TokenA;
-    uint256 public deposited_TokenB;
+    uint256 public depositedBaseToken;
+    uint256 public depositedFairToken;
 
     address public factory;
 
-    uint256 public start_time = block.timestamp;
-    uint256 public end_time;
+    uint256 public startTime = block.timestamp;
+    uint256 public endTime;
 
     address public otherPool;
     uint256 public poolLP;
-    uint256 public reserveA;
+    uint256 public baseTokenReserve;
 
-    Status public ftoState = Status.Processing;
+    Status public FTOState = Status.Processing;
 
-    mapping(address => uint256) public tokenA_deposit;
+    mapping(address => uint256) public baseTokenDeposit;
     mapping(address => uint256) public claimedLp;
 
-    address[] public tokenA_deposit_address;
+    address[] public baseTokenDepositAddress;
 
     error InvalidAmount();
     error InvalidUpdate();
@@ -54,60 +54,60 @@ contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
 
     // called once by the factory at time of deployment
     function initialize(
-        address _tokenA,
-        address _tokenB,
-        address _tokenB_provider,
+        address _baseToken,
+        address _fairToken,
+        address _fairTokenProvider,
         address _otherPool,
-        uint256 raising_cycle
+        uint256 raisingCycle
     ) external {
         require(msg.sender == factory, "YexFTOPair: FORBIDDEN"); // sufficient check
-        tokenA = _tokenA;
-        tokenB = _tokenB;
-        tokenB_provider = _tokenB_provider;
-        end_time = block.timestamp + raising_cycle;
+        baseToken = _baseToken;
+        fairToken = _fairToken;
+        fairTokenProvider = _fairTokenProvider;
+        endTime = block.timestamp + raisingCycle;
         otherPool = _otherPool;
     }
 
-    function depositTokenB(
+    function depositFairToken(
         address depositer,
         uint256 amount
     ) external override {
-        require(block.timestamp < end_time, "deposit: raising time is over");
-        require(depositer == tokenB_provider, "only Project owner can deposit");
+        require(block.timestamp < endTime, "deposit: raising time is over");
+        require(depositer == fairTokenProvider, "only Project owner can deposit");
         if (amount == 0) {
             revert InvalidAmount();
         }
-        uint256 balanceB = IERC20(tokenB).balanceOf(address(this));
-        if (balanceB != amount + deposited_TokenB) {
+        uint256 fairTokenBalance = IERC20(fairToken).balanceOf(address(this));
+        if (fairTokenBalance != amount + depositedFairToken) {
             revert InvalidUpdate();
         }
-        deposited_TokenB = deposited_TokenB + amount;
+        depositedFairToken = depositedFairToken + amount;
         emit Deposit(depositer, amount);
     }
 
-    function depositTokenA(
+    function depositBaseToken(
         address depositer,
         uint256 amount
     ) external override {
-        require(block.timestamp < end_time, "deposit: raising time is over");
+        require(block.timestamp < endTime, "deposit: raising time is over");
         require(
-            depositer != tokenB_provider,
+            depositer != fairTokenProvider,
             "Project owner are not allowed to deposit with their launch"
         );
         if (amount == 0) {
             revert InvalidAmount();
         }
-        uint256 balanceA = IERC20(tokenA).balanceOf(address(this));
-        if (balanceA != amount + deposited_TokenA) {
+        uint256 baseTokenBalance = IERC20(baseToken).balanceOf(address(this));
+        if (baseTokenBalance != amount + depositedBaseToken) {
             revert InvalidUpdate();
         }
 
-        if (tokenA_deposit[depositer] == 0) {
-            tokenA_deposit_address.push(depositer);
+        if (baseTokenDeposit[depositer] == 0) {
+            baseTokenDepositAddress.push(depositer);
         }
 
-        tokenA_deposit[depositer] = tokenA_deposit[depositer] + amount;
-        deposited_TokenA = deposited_TokenA + amount;
+        baseTokenDeposit[depositer] = baseTokenDeposit[depositer] + amount;
+        depositedBaseToken = depositedBaseToken + amount;
 
         // update participations
         IYexFTOFactory(factory).addEvent(depositer, address(this));
@@ -116,80 +116,80 @@ contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
     }
 
     function withdraw(address withdrawer) external override lock {
-        require(ftoState == Status.Failed, "fund rasing not failed.");
-        require(tokenB_provider == withdrawer, "only provider can withdraw");
-        IERC20(tokenB).transfer(withdrawer, deposited_TokenB);
-        emit Withdraw(withdrawer, deposited_TokenB);
+        require(FTOState == Status.Failed, "fund rasing not failed.");
+        require(fairTokenProvider == withdrawer, "only provider can withdraw");
+        IERC20(fairToken).transfer(withdrawer, depositedFairToken);
+        emit Withdraw(withdrawer, depositedFairToken);
     }
 
     function claimLP(address claimer) external lock {
-        require(ftoState == Status.Success, "fund rasing not success.");
+        require(FTOState == Status.Success, "fund rasing not success.");
         require(
-            tokenB_provider == claimer || tokenA_deposit[claimer] != 0,
-            "only tokenB provider or tokenA depositer can claim."
+            fairTokenProvider == claimer || baseTokenDeposit[claimer] != 0,
+            "only fair token provider or base token depositer can claim."
         );
-        address pool_factory = IUniswapV2Router02(otherPool).factory();
-        address pair = IUniswapV2Factory(pool_factory).getPair(tokenA, tokenB);
-        uint256 lp_amount = _calculateLPAmount(claimer);
+        address poolFactory = IUniswapV2Router02(otherPool).factory();
+        address pair = IUniswapV2Factory(poolFactory).getPair(baseToken, fairToken);
+        uint256 lpAmount = _calculateLPAmount(claimer);
         
-        require(lp_amount > claimedLp[claimer], "Exceeded claimable amount");
+        require(lpAmount > claimedLp[claimer], "Exceeded claimable amount");
         
-        TransferHelper.safeTransfer(pair, claimer, lp_amount);
-        claimedLp[claimer] = lp_amount;
-        tokenA_deposit[claimer] = 0;
+        TransferHelper.safeTransfer(pair, claimer, lpAmount);
+        claimedLp[claimer] = lpAmount;
+        baseTokenDeposit[claimer] = 0;
 
-        emit ClaimLP(claimer, lp_amount);
+        emit ClaimLP(claimer, lpAmount);
     }
 
     function claimableLP(address claimer) external view returns (uint256) {
-        require(ftoState == Status.Success, "fund rasing not success.");
-        uint256 lp_amount = _calculateLPAmount(claimer);
-        return lp_amount;
+        require(FTOState == Status.Success, "fund rasing not success.");
+        uint256 lpAmount = _calculateLPAmount(claimer);
+        return lpAmount;
     }
 
     function _calculateLPAmount(
         address caller
-    ) internal view returns (uint256 lp_amount) {
-        lp_amount = 0;
-        if (tokenB_provider == caller) {
-            lp_amount = poolLP >> 1;
+    ) internal view returns (uint256 lpAmount) {
+        lpAmount = 0;
+        if (fairTokenProvider == caller) {
+            lpAmount = poolLP >> 1;
         }
-        uint256 deposit_amount = tokenA_deposit[caller];
+        uint256 deposit_amount = baseTokenDeposit[caller];
 
-        lp_amount = lp_amount + ((deposit_amount * poolLP) >> 1) / reserveA;
+        lpAmount = lpAmount + ((deposit_amount * poolLP) >> 1) / baseTokenReserve;
     }
 
     function _perform() internal {
-        if (deposited_TokenA != 0) {
+        if (depositedBaseToken != 0) {
             // rasing success
             // addLiquidity
-            IERC20(tokenA).approve(otherPool, deposited_TokenA);
-            IERC20(tokenB).approve(otherPool, deposited_TokenB);
+            IERC20(baseToken).approve(otherPool, depositedBaseToken);
+            IERC20(fairToken).approve(otherPool, depositedFairToken);
             (, , uint liquidity) = IUniswapV2Router02(otherPool).addLiquidity(
-                tokenA,
-                tokenB,
-                deposited_TokenA,
-                deposited_TokenB,
+                baseToken,
+                fairToken,
+                depositedBaseToken,
+                depositedFairToken,
                 0,
                 0,
                 address(this),
                 block.timestamp + 10
             );
             poolLP = liquidity;
-            address pool_factory = IUniswapV2Router02(otherPool).factory();
-            address pair = IUniswapV2Factory(pool_factory).getPair(
-                tokenA,
-                tokenB
+            address poolFactory = IUniswapV2Router02(otherPool).factory();
+            address pair = IUniswapV2Factory(poolFactory).getPair(
+                baseToken,
+                fairToken
             );
-            (address token0, ) = tokenA < tokenB
-                ? (tokenA, tokenB)
-                : (tokenB, tokenA);
+            (address token0, ) = baseToken < fairToken
+                ? (baseToken, fairToken)
+                : (fairToken, baseToken);
             (uint reserve0, uint reserve1, ) = IUniswapV2Pair(pair)
                 .getReserves();
-            reserveA = tokenA == token0 ? reserve0 : reserve1;
-            ftoState = Status.Success;
+            baseTokenReserve = baseToken == token0 ? reserve0 : reserve1;
+            FTOState = Status.Success;
         } else {
-            ftoState = Status.Failed;
+            FTOState = Status.Failed;
         }
     }
 
@@ -201,12 +201,12 @@ contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
         override
         returns (bool upkeepNeeded, bytes memory performData)
     {
-        upkeepNeeded = block.timestamp > end_time;
+        upkeepNeeded = block.timestamp > endTime;
         performData = "";
     }
 
     function performUpkeep(bytes calldata) external override {
-        require(block.timestamp > end_time, "fund rasing not finished.");
+        require(block.timestamp > endTime, "fund rasing not finished.");
         _perform();
     }
 }
