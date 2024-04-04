@@ -58,13 +58,13 @@ contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
         address _fairToken,
         address _fairTokenProvider,
         address _otherPool,
-        uint256 rasingCycle
+        uint256 raisingCycle
     ) external {
         require(msg.sender == factory, "YexFTOPair: FORBIDDEN"); // sufficient check
         baseToken = _baseToken;
         fairToken = _fairToken;
         fairTokenProvider = _fairTokenProvider;
-        endTime = block.timestamp + rasingCycle;
+        endTime = block.timestamp + raisingCycle;
         otherPool = _otherPool;
     }
 
@@ -77,8 +77,8 @@ contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
         if (amount == 0) {
             revert InvalidAmount();
         }
-        uint256 balanceB = IERC20(fairToken).balanceOf(address(this));
-        if (balanceB != amount + depositedFairToken) {
+        uint256 fairTokenBalance = IERC20(fairToken).balanceOf(address(this));
+        if (fairTokenBalance != amount + depositedFairToken) {
             revert InvalidUpdate();
         }
         depositedFairToken = depositedFairToken + amount;
@@ -128,35 +128,35 @@ contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
             fairTokenProvider == claimer || baseTokenDeposit[claimer] != 0,
             "only fair token provider or base token depositer can claim."
         );
-        address pool_factory = IUniswapV2Router02(otherPool).factory();
-        address pair = IUniswapV2Factory(pool_factory).getPair(baseToken, fairToken);
-        uint256 lp_amount = _calculateLPAmount(claimer);
+        address poolFactory = IUniswapV2Router02(otherPool).factory();
+        address pair = IUniswapV2Factory(poolFactory).getPair(baseToken, fairToken);
+        uint256 lpAmount = _calculateLPAmount(claimer);
         
-        require(lp_amount > claimedLp[claimer], "Exceeded claimable amount");
+        require(lpAmount > claimedLp[claimer], "Exceeded claimable amount");
         
-        TransferHelper.safeTransfer(pair, claimer, lp_amount);
-        claimedLp[claimer] = lp_amount;
+        TransferHelper.safeTransfer(pair, claimer, lpAmount);
+        claimedLp[claimer] = lpAmount;
         baseTokenDeposit[claimer] = 0;
 
-        emit ClaimLP(claimer, lp_amount);
+        emit ClaimLP(claimer, lpAmount);
     }
 
     function claimableLP(address claimer) external view returns (uint256) {
         require(FTOState == Status.Success, "fund rasing not success.");
-        uint256 lp_amount = _calculateLPAmount(claimer);
-        return lp_amount;
+        uint256 lpAmount = _calculateLPAmount(claimer);
+        return lpAmount;
     }
 
     function _calculateLPAmount(
         address caller
-    ) internal view returns (uint256 lp_amount) {
-        lp_amount = 0;
+    ) internal view returns (uint256 lpAmount) {
+        lpAmount = 0;
         if (fairTokenProvider == caller) {
-            lp_amount = poolLP >> 1;
+            lpAmount = poolLP >> 1;
         }
         uint256 deposit_amount = baseTokenDeposit[caller];
 
-        lp_amount = lp_amount + ((deposit_amount * poolLP) >> 1) / baseTokenReserve;
+        lpAmount = lpAmount + ((deposit_amount * poolLP) >> 1) / baseTokenReserve;
     }
 
     function _perform() internal {
@@ -176,8 +176,8 @@ contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
                 block.timestamp + 10
             );
             poolLP = liquidity;
-            address pool_factory = IUniswapV2Router02(otherPool).factory();
-            address pair = IUniswapV2Factory(pool_factory).getPair(
+            address poolFactory = IUniswapV2Router02(otherPool).factory();
+            address pair = IUniswapV2Factory(poolFactory).getPair(
                 baseToken,
                 fairToken
             );

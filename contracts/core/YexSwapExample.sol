@@ -103,8 +103,8 @@ contract YexSwapPool is ERC20, IYexSwapPool {
             amountA > 0 && amountB > 0,
             "addLiquidity: INSUFFICIENT_INPUT_AMOUNT"
         );
-        uint256 lp_supply = totalSupply();
-        require(lp_supply == 0, "pool has been initialized");
+        uint256 lpSupply = totalSupply();
+        require(lpSupply == 0, "pool has been initialized");
         baseTokenReserve = amountA;
         fairTokenReserve = amountB;
         console.log("pool %s init liquidity", name(), baseTokenReserve, fairTokenReserve);
@@ -121,8 +121,8 @@ contract YexSwapPool is ERC20, IYexSwapPool {
             baseTokenAmount > 0 || amountB > 0,
             "addLiquidity: INSUFFICIENT_INPUT_AMOUNT"
         );
-        uint256 lp_supply = totalSupply();
-        require(lp_supply > 0, "pool has not been initialized");
+        uint256 lpSupply = totalSupply();
+        require(lpSupply > 0, "pool has not been initialized");
 
         uint256 amountLP = 0;
 
@@ -130,22 +130,22 @@ contract YexSwapPool is ERC20, IYexSwapPool {
             uint256 _baseTokenReserve = baseTokenReserve;
             baseToken.transferFrom(msg.sender, address(this), baseTokenAmount);
             amountLP +=
-                (lp_supply * Math.sqrt((baseTokenAmount + _baseTokenReserve) * _baseTokenReserve)) /
+                (lpSupply * Math.sqrt((baseTokenAmount + _baseTokenReserve) * _baseTokenReserve)) /
                 _baseTokenReserve -
-                lp_supply;
+                lpSupply;
             baseTokenReserve += baseTokenAmount;
         }
         if (amountB > 0) {
             uint256 _fairTokenReserve = fairTokenReserve;
             fairToken.transferFrom(msg.sender, address(this), amountB);
             amountLP +=
-                (lp_supply * Math.sqrt((amountB + _fairTokenReserve) * _fairTokenReserve)) /
+                (lpSupply * Math.sqrt((amountB + _fairTokenReserve) * _fairTokenReserve)) /
                 _fairTokenReserve -
-                lp_supply;
+                lpSupply;
             fairTokenReserve += amountB;
         }
         
-        lp_supply += amountLP;
+        lpSupply += amountLP;
         
         console.log(
             "pool %s add liquidity current reserves %s %s",
@@ -171,16 +171,16 @@ contract YexSwapPool is ERC20, IYexSwapPool {
         RmInstruction remove // checkLPAllowance(amountLP)
     ) external {
         require(amountLP > 0, "removeLiquidity: INSUFFICIENT_INPUT_AMOUNT");
-        uint256 lp_supply = totalSupply();
+        uint256 lpSupply = totalSupply();
         console.log(
             "remove liquidity,current lp %s remove lp %s ",
-            lp_supply,
+            lpSupply,
             amountLP
         );
-        require(lp_supply > 0, "pool has not been initialized");
+        require(lpSupply > 0, "pool has not been initialized");
         //Validate: if this is correct meaning
         require(
-            amountLP < lp_supply,
+            amountLP < lpSupply,
             "removeLiquidity: EXCEEDING_REMOVE_LIMIT"
         );
         burn(msg.sender, amountLP);
@@ -188,23 +188,23 @@ contract YexSwapPool is ERC20, IYexSwapPool {
         uint256 _fairTokenReserve = fairTokenReserve;
         //The case to remove both token A and token B
         if (remove == RmInstruction.RemoveBoth) {
-            baseToken.transfer(msg.sender, (amountLP * _baseTokenReserve) / lp_supply);
-            fairToken.transfer(msg.sender, (amountLP * _fairTokenReserve) / lp_supply);
+            baseToken.transfer(msg.sender, (amountLP * _baseTokenReserve) / lpSupply);
+            fairToken.transfer(msg.sender, (amountLP * _fairTokenReserve) / lpSupply);
         }
         //The case to just remove the token A
         else if (remove == RmInstruction.RemoveBaseToken) {
             uint256 amount = _baseTokenReserve -
                 ((_baseTokenReserve *
-                    ((lp_supply - amountLP) * (lp_supply - amountLP))) /
-                    lp_supply /
-                    lp_supply);
+                    ((lpSupply - amountLP) * (lpSupply - amountLP))) /
+                    lpSupply /
+                    lpSupply);
             baseToken.transfer(msg.sender, amount);
         } else if (remove == RmInstruction.RemoveFairToken) {
             uint256 amount = _fairTokenReserve -
                 ((_fairTokenReserve *
-                    ((lp_supply - amountLP) * (lp_supply - amountLP))) /
-                    lp_supply /
-                    lp_supply);
+                    ((lpSupply - amountLP) * (lpSupply - amountLP))) /
+                    lpSupply /
+                    lpSupply);
             fairToken.transfer(msg.sender, amount);
         }
     }
@@ -275,14 +275,14 @@ contract YexSwapExample is YexSwapPool, AutomationCompatibleInterface {
         uint256 batchBaseToken;
         /// @notice every transaction volume for each batch of fair token
         uint256 batchFairToken;
-        /// @notice record the start_time for the batch
-        uint256 start_time;
+        /// @notice record the startTime for the batch
+        uint256 startTime;
     }
 
     struct PoolInfo {
         uint256 minBaseTokenReserve;
         uint256 minFairTokenReserve;
-        IYexSwapPool min_pool;
+        IYexSwapPool minPool;
         uint256 maxBaseTokenReserve;
         uint256 maxFairTokenReserve;
         IYexSwapPool maxPool;
@@ -313,47 +313,47 @@ contract YexSwapExample is YexSwapPool, AutomationCompatibleInterface {
             "deposit: INSUFFICIENT_INPUT_AMOUNT"
         );
 
-        uint256 current_batch = batchid;
+        uint256 currentBatch = batchid;
 
         // setup new batch start time
-        if (batchInfo[current_batch].start_time == 0) {
-            batchInfo[current_batch].start_time = block.timestamp;
+        if (batchInfo[currentBatch].startTime == 0) {
+            batchInfo[currentBatch].startTime = block.timestamp;
         }
 
         if (baseTokenAmount > 0) {
             baseToken.transferFrom(msg.sender, address(this), baseTokenAmount);
 
             // first deposit, add into deposit array
-            if (batchInfo[current_batch].depositedBaseToken[msg.sender] == 0) {
-                batchInfo[current_batch].baseTokenDepositAddress.push(
+            if (batchInfo[currentBatch].depositedBaseToken[msg.sender] == 0) {
+                batchInfo[currentBatch].baseTokenDepositAddress.push(
                     address(msg.sender)
                 );
             }
 
-            batchInfo[current_batch].depositedBaseToken[msg.sender] =
-                batchInfo[current_batch].depositedBaseToken[msg.sender] +
+            batchInfo[currentBatch].depositedBaseToken[msg.sender] =
+                batchInfo[currentBatch].depositedBaseToken[msg.sender] +
                 baseTokenAmount;
 
-            batchInfo[current_batch].batchBaseToken =
-                batchInfo[current_batch].batchBaseToken +
+            batchInfo[currentBatch].batchBaseToken =
+                batchInfo[currentBatch].batchBaseToken +
                 baseTokenAmount;
         }
         if (fairTokenAmount > 0) {
             fairToken.transferFrom(msg.sender, address(this), fairTokenAmount);
 
             // first deposit, add into deposit array
-            if (batchInfo[current_batch].depositedFairToken[msg.sender] == 0) {
-                batchInfo[current_batch].fairTokenDepositAddress.push(
+            if (batchInfo[currentBatch].depositedFairToken[msg.sender] == 0) {
+                batchInfo[currentBatch].fairTokenDepositAddress.push(
                     address(msg.sender)
                 );
             }
 
-            batchInfo[current_batch].depositedFairToken[msg.sender] =
-                batchInfo[current_batch].depositedFairToken[msg.sender] +
+            batchInfo[currentBatch].depositedFairToken[msg.sender] =
+                batchInfo[currentBatch].depositedFairToken[msg.sender] +
                 fairTokenAmount;
 
-            batchInfo[current_batch].batchFairToken =
-                batchInfo[current_batch].batchFairToken +
+            batchInfo[currentBatch].batchFairToken =
+                batchInfo[currentBatch].batchFairToken +
                 fairTokenAmount;
         }
         // emit Deposit(msg.sender, batchid, baseTokenAmount, fairTokenAmount);
@@ -368,26 +368,26 @@ contract YexSwapExample is YexSwapPool, AutomationCompatibleInterface {
         returns (bool upkeepNeeded, bytes memory performData)
     {
         upkeepNeeded =
-            (block.timestamp - batchInfo[batchid].start_time) > 10 &&
+            (block.timestamp - batchInfo[batchid].startTime) > 10 &&
             (batchInfo[batchid].batchBaseToken > 0 ||
                 batchInfo[batchid].batchFairToken > 0);
         performData = "";
     }
 
-    // 1. calculate min_pool and maxPool from pool list
-    // 2. calculate delta amount to swap with min_pool or maxPool
+    // 1. calculate minPool and maxPool from pool list
+    // 2. calculate delta amount to swap with minPool or maxPool
     // 3. transfer token to users
     function performUpkeep(bytes calldata /* performData */) external override {
         TokenInfo storage currentTokenInfo = batchInfo[batchid];
         require(
-            (block.timestamp - currentTokenInfo.start_time) > 10 &&
+            (block.timestamp - currentTokenInfo.startTime) > 10 &&
                 (currentTokenInfo.batchBaseToken > 0 ||
                     currentTokenInfo.batchFairToken > 0),
             "not need to perform"
         );
 
         // setup a new batch
-        // batch_start_time[currentBatch] = block.timestamp;
+        // batch_startTime[currentBatch] = block.timestamp;
         //this is the same look up we are having with require statement. why do we need to duplicate?
         uint256 baseTokenBalance = currentTokenInfo.batchBaseToken;
         uint256 fairTokenBalance = currentTokenInfo.batchFairToken;
@@ -413,10 +413,10 @@ contract YexSwapExample is YexSwapPool, AutomationCompatibleInterface {
                 poolInfo.minBaseTokenReserve);
             fairTokenBalance_ -= delta;
             // swap using the pool with the minimum price
-            if (address(poolInfo.min_pool) == address(this)) {
+            if (address(poolInfo.minPool) == address(this)) {
                 (delta, ) = _swap(0, delta);
             } else {
-                (delta, ) = poolInfo.min_pool.swap(0, delta);
+                (delta, ) = poolInfo.minPool.swap(0, delta);
             }
             baseTokenBalance_ += delta;
         } else if (
@@ -447,19 +447,19 @@ contract YexSwapExample is YexSwapPool, AutomationCompatibleInterface {
         uint256 len = currentTokenInfo.fairTokenDepositAddress.length;
         // transfer tokenA to user who deposit fairToken
         for (uint256 i = 0; i < len; ) {
-            address user_addr = currentTokenInfo.fairTokenDepositAddress[i];
-            uint256 deposit_amount = currentTokenInfo.depositedFairToken[
-                user_addr
+            address userAddr = currentTokenInfo.fairTokenDepositAddress[i];
+            uint256 depositAmount = currentTokenInfo.depositedFairToken[
+                userAddr
             ];
-            uint256 withdraw_amount = (deposit_amount * baseTokenBalance_) / fairTokenBalance;
+            uint256 withdrawAmount = (depositAmount * baseTokenBalance_) / fairTokenBalance;
             console.log(
                 "transfer baseToken %s to user who deposit fairToken",
-                withdraw_amount
+                withdrawAmount
             );
-            baseToken.transfer(user_addr, withdraw_amount);
+            baseToken.transfer(userAddr, withdrawAmount);
 
             // delete batchInfo's mapping
-            delete currentTokenInfo.depositedFairToken[user_addr];
+            delete currentTokenInfo.depositedFairToken[userAddr];
 
             // cannot realistically overflow on human timescales
             unchecked {
@@ -470,31 +470,31 @@ contract YexSwapExample is YexSwapPool, AutomationCompatibleInterface {
         // transfer fairToken to user who deposit baseToken
         len = currentTokenInfo.baseTokenDepositAddress.length;
         for (uint256 i = 0; i < len; ) {
-            address user_addr = currentTokenInfo.baseTokenDepositAddress[i];
-            uint256 deposit_amount = currentTokenInfo.depositedBaseToken[
-                user_addr
+            address userAddr = currentTokenInfo.baseTokenDepositAddress[i];
+            uint256 depositAmount = currentTokenInfo.depositedBaseToken[
+                userAddr
             ];
-            uint256 withdraw_amount = (deposit_amount * fairTokenBalance_) / baseTokenBalance;
+            uint256 withdrawAmount = (depositAmount * fairTokenBalance_) / baseTokenBalance;
             console.log(
                 "transfer fiarToken %s to user who deposit baseToken",
-                withdraw_amount
+                withdrawAmount
             );
-            fairToken.transfer(user_addr, withdraw_amount);
+            fairToken.transfer(userAddr, withdrawAmount);
 
             // delete batchInfo's mapping
-            delete currentTokenInfo.depositedBaseToken[user_addr];
+            delete currentTokenInfo.depositedBaseToken[userAddr];
 
             // cannot realistically overflow on human timescales
             unchecked {
                 ++i;
             }
         }
-        // console.log("before %s", batchInfo[currentBatch].start_time);
+        // console.log("before %s", batchInfo[currentBatch].startTime);
 
         // delete batchInfo
         delete (batchInfo[batchid]);
 
-        // console.log("after %s", batchInfo[currentBatch].start_time);
+        // console.log("after %s", batchInfo[currentBatch].startTime);
         batchid += 1;
     }
 

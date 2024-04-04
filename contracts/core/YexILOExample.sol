@@ -49,7 +49,7 @@ contract YexILOExample is ERC20("YexILOExampleLP", "ILOTestLP") {
     uint256 public depositedBaseToken;
     uint256 public depositedFairToken;
 
-    bool public rasing_paused;
+    bool public raisingPaused;
 
      /// @notice Possible remove status
     enum RmInstruction {
@@ -104,7 +104,7 @@ contract YexILOExample is ERC20("YexILOExampleLP", "ILOTestLP") {
             baseTokenAmount > 0 || fairTokenAmount > 0,
             "deposit: INSUFFICIENT_INPUT_AMOUNT"
         );
-        require(rasing_paused == false, "deposit: raising time is over");
+        require(raisingPaused == false, "deposit: raising time is over");
 
         if (baseTokenAmount > 0) {
             baseToken.transferFrom(msg.sender, address(this), baseTokenAmount);
@@ -133,7 +133,7 @@ contract YexILOExample is ERC20("YexILOExampleLP", "ILOTestLP") {
             baseTokenAmount > 0 || fairTokenAmount > 0,
             "addLiquidity: INSUFFICIENT_INPUT_AMOUNT"
         );
-        require(rasing_paused == true, "deposit: raising time has not over");
+        require(raisingPaused == true, "deposit: raising time has not over");
 
         uint256 lp_supply = totalSupply();
         require(lp_supply != 0, "pool has not initialized");
@@ -206,7 +206,7 @@ contract YexILOExample is ERC20("YexILOExampleLP", "ILOTestLP") {
             fairTokenProvider == msg.sender,
             "only tokenB provider can withdraw"
         );
-        require(rasing_paused == true, "fund rasing has not over");
+        require(raisingPaused == true, "fund rasing has not over");
         require(
             depositedBaseToken == 0,
             "only withdraw when the fund raising fails"
@@ -256,8 +256,8 @@ contract YexILOExample is ERC20("YexILOExampleLP", "ILOTestLP") {
     }
 
     function setRasingPaused() external {
-        require(rasing_paused == false, "rasing time is over");
-        rasing_paused = true;
+        require(raisingPaused == false, "rasing time is over");
+        raisingPaused = true;
         _perform();
     }
 }

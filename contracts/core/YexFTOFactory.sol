@@ -125,7 +125,7 @@ contract YexFTOFactory is IYexFTOFactory, Ownable {
         string calldata symbol,
         uint256 _amount,
         address poolHandler,
-        uint256 rasing_cycle
+        uint256 raisingCycle
     ) external override onlyWhitelistCaller returns (address pair) {
         ERC20Mintable _fairToken = new ERC20Mintable(name, symbol);
         uint256 amount = _amount; // mint _amount fairToken
@@ -136,7 +136,7 @@ contract YexFTOFactory is IYexFTOFactory, Ownable {
             fairToken,
             msg.sender,
             poolHandler,
-            rasing_cycle
+            raisingCycle
         );
         _fairToken.mint(pair, amount);
         IYexFTOPair(pair).depositFairToken(msg.sender, amount);
@@ -155,7 +155,7 @@ contract YexFTOFactory is IYexFTOFactory, Ownable {
         address fairToken,
         address fairTokenProvider,
         address swapHandler,
-        uint256 rasing_cycle
+        uint256 raisingCycle
     ) internal returns (address pair) {
         require(baseToken != fairToken, "YexFTOFactory: IDENTICAL_ADDRESSES");
         require(isBaseToken[baseToken], "YexFTOFactory: NOT_ALLOWED_BASE_TOKEN");
@@ -179,7 +179,7 @@ contract YexFTOFactory is IYexFTOFactory, Ownable {
             fairToken,
             fairTokenProvider,
             swapHandler,
-            rasing_cycle
+            raisingCycle
         );
         getPair[token0][token1] = pair;
         getPair[token1][token0] = pair; // populate mapping in the reverse direction
