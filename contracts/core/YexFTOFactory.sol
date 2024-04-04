@@ -78,11 +78,11 @@ contract YexFTOFactory is IYexFTOFactory, Ownable {
         _;
     }
 
-    function setNoWhiteList(bool req) public onlyOwner {
+    function setNoWhiteList(bool req) external onlyOwner {
         noWhiteList = req;
     }
 
-    function addEvent(address depositer, address ftoPair) public override {
+    function addEvent(address depositer, address ftoPair) external override {
         require(
             IYexFTOPair(ftoPair).baseTokenDeposit(depositer) != 0,
             "Not participate in this rasing."
