@@ -25,7 +25,7 @@ async function scanUpKeep() {
     const pair: string = await ftoFactoryContract.allPairs(i);
     console.log(pair);
     const pairContract = FTOPair.attach(pair);
-    const ftoState = await pairContract.ftoState();
+    const ftoState = await pairContract.FTOState();
     console.log(ftoState);
     // console.log(await pairContract.participations());
     if (ftoState == 2) {
