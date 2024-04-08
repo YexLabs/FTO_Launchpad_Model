@@ -66,6 +66,37 @@ contract YexFTOFacade is IYexFTOFacade, Ownable {
         IYexFTOPair(pair).claimLP(msg.sender);
     }
 
+    function refundBaseToken(
+        address baseToken,
+        address fairToken
+    ) external override {
+        address pair = YexFTOLibrary.pairFor(factory, baseToken, fairToken);
+        require(
+            getFTOPairProvider(baseToken, fairToken) == msg.sender ||
+                IYexFTOPair(pair).baseTokenDeposit(msg.sender) != 0,
+            "only baseToken depositer can get refund."
+        );
+        IYexFTOPair(pair).refundBaseToken(msg.sender);
+    }
+
+    function pause(address baseToken, address fairToken) external override {
+        require(
+            getFTOPairProvider(baseToken, fairToken) == msg.sender,
+            "only provider can pause"
+        );
+        address pair = YexFTOLibrary.pairFor(factory, baseToken, fairToken);
+        IYexFTOPair(pair).pause();
+    }
+
+    function resume(address baseToken, address fairToken) external override {
+        require(
+            getFTOPairProvider(baseToken, fairToken) == msg.sender,
+            "only provider can resume"
+        );
+        address pair = YexFTOLibrary.pairFor(factory, baseToken, fairToken);
+        IYexFTOPair(pair).resume();
+    }
+
     function claimableLP(
         address baseToken,
         address fairToken
@@ -80,15 +111,28 @@ contract YexFTOFacade is IYexFTOFacade, Ownable {
         uint256 baseTokenAmount,
         uint256 fairTokenAmount
     ) internal {
-        require(baseTokenAmount > 0 || fairTokenAmount > 0, "INSUFFICIENT_INPUT_AMOUNT");
+        require(
+            baseTokenAmount > 0 || fairTokenAmount > 0,
+            "INSUFFICIENT_INPUT_AMOUNT"
+        );
         address pair = YexFTOLibrary.pairFor(factory, baseToken, fairToken);
         // transfer amount to pair
         if (baseTokenAmount > 0) {
-            TransferHelper.safeTransferFrom(baseToken, msg.sender, pair, baseTokenAmount);
+            TransferHelper.safeTransferFrom(
+                baseToken,
+                msg.sender,
+                pair,
+                baseTokenAmount
+            );
             IYexFTOPair(pair).depositBaseToken(msg.sender, baseTokenAmount);
         }
         if (fairTokenAmount > 0) {
-            TransferHelper.safeTransferFrom(fairToken, msg.sender, pair, fairTokenAmount);
+            TransferHelper.safeTransferFrom(
+                fairToken,
+                msg.sender,
+                pair,
+                fairTokenAmount
+            );
             IYexFTOPair(pair).depositFairToken(msg.sender, fairTokenAmount);
         }
     }

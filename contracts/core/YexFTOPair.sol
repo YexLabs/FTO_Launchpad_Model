@@ -31,6 +31,7 @@ contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
     uint256 public baseTokenReserve;
 
     Status public FTOState = Status.Processing;
+    bool public paused;
 
     mapping(address => uint256) public baseTokenDeposit;
     mapping(address => uint256) public claimedLp;
@@ -46,6 +47,16 @@ contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
         unlocked = 0;
         _;
         unlocked = 1;
+    }
+
+    modifier whenPaused() {
+        require(paused, "Project is in progress");
+        _;
+    }
+
+    modifier whenNotPaused() {
+        require(!paused, "Project is not paused");
+        _;
     }
 
     constructor() {
@@ -71,9 +82,12 @@ contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
     function depositFairToken(
         address depositer,
         uint256 amount
-    ) external override {
+    ) external override whenNotPaused {
         require(block.timestamp < endTime, "deposit: raising time is over");
-        require(depositer == fairTokenProvider, "only Project owner can deposit");
+        require(
+            depositer == fairTokenProvider,
+            "only Project owner can deposit"
+        );
         if (amount == 0) {
             revert InvalidAmount();
         }
@@ -88,7 +102,7 @@ contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
     function depositBaseToken(
         address depositer,
         uint256 amount
-    ) external override {
+    ) external override whenNotPaused {
         require(block.timestamp < endTime, "deposit: raising time is over");
         require(
             depositer != fairTokenProvider,
@@ -115,6 +129,22 @@ contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
         emit Deposit(depositer, amount);
     }
 
+    function refundBaseToken(
+        address depositer
+    ) external override lock whenPaused {
+        require(block.timestamp < endTime, "deposit: raising time is over");
+        require(
+            depositer != fairTokenProvider,
+            "Project owner are not allowed to refund"
+        );
+        uint256 deposit_amount = baseTokenDeposit[depositer];
+       
+        IERC20(baseToken).transfer(depositer, deposit_amount);
+        baseTokenDeposit[depositer] = 0;
+
+        emit Refund(depositer, deposit_amount);
+    }
+
     function withdraw(address withdrawer) external override lock {
         require(FTOState == Status.Failed, "fund rasing not failed.");
         require(fairTokenProvider == withdrawer, "only provider can withdraw");
@@ -129,18 +159,21 @@ contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
             "only fair token provider or base token depositer can claim."
         );
         address poolFactory = IUniswapV2Router02(otherPool).factory();
-        address pair = IUniswapV2Factory(poolFactory).getPair(baseToken, fairToken);
+        address pair = IUniswapV2Factory(poolFactory).getPair(
+            baseToken,
+            fairToken
+        );
         uint256 lpAmount = _calculateLPAmount(claimer);
-        
+
         require(lpAmount > claimedLp[claimer], "Exceeded claimable amount");
-        
+
         TransferHelper.safeTransfer(pair, claimer, lpAmount);
         claimedLp[claimer] = lpAmount;
         baseTokenDeposit[claimer] = 0;
 
         emit ClaimLP(claimer, lpAmount);
     }
-
+    
     function claimableLP(address claimer) external view returns (uint256) {
         require(FTOState == Status.Success, "fund rasing not success.");
         uint256 lpAmount = _calculateLPAmount(claimer);
@@ -156,7 +189,10 @@ contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
         }
         uint256 deposit_amount = baseTokenDeposit[caller];
 
-        lpAmount = lpAmount + ((deposit_amount * poolLP) >> 1) / baseTokenReserve;
+        lpAmount =
+            lpAmount +
+            ((deposit_amount * poolLP) >> 1) /
+            baseTokenReserve;
     }
 
     function _perform() internal {
@@ -208,5 +244,17 @@ contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
     function performUpkeep(bytes calldata) external override {
         require(block.timestamp > endTime, "fund rasing not finished.");
         _perform();
+    }
+
+    function pause() external override {
+        require(fairTokenProvider == tx.origin, "only provider can withdraw");
+        paused = true;
+        emit Paused(block.timestamp);
+    }
+
+    function resume() external override {
+        require(fairTokenProvider == tx.origin, "only provider can withdraw");
+        paused = false;
+        emit Resumed(block.timestamp);
     }
 }

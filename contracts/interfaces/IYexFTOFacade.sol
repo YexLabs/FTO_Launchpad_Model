@@ -14,6 +14,15 @@ interface IYexFTOFacade {
     function withdraw(address baseToken, address fairToken) external;
 
     function claimLP(address baseToken, address fairToken) external;
+    
+    function pause(address baseToken, address fairToken) external;
+
+    function resume(address baseToken, address fairToken) external;
+
+    function refundBaseToken(
+        address baseToken,
+        address fairToken
+    ) external;
 
     function claimableLP(
         address baseToken,
