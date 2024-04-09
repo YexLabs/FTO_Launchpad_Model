@@ -11,23 +11,23 @@ library YexFTOLibrary {
 
     // returns sorted token addresses, used to handle return values from pairs sorted in this order
     function sortTokens(
-        address baseToken,
-        address fairToken
+        address raisedToken,
+        address launchedToken
     ) internal pure returns (address token0, address token1) {
-        require(baseToken != fairToken, "YexFTOLibrary: IDENTICAL_ADDRESSES");
-        (token0, token1) = baseToken < fairToken
-            ? (baseToken, fairToken)
-            : (fairToken, baseToken);
+        require(raisedToken != launchedToken, "YexFTOLibrary: IDENTICAL_ADDRESSES");
+        (token0, token1) = raisedToken < launchedToken
+            ? (raisedToken, launchedToken)
+            : (launchedToken, raisedToken);
         require(token0 != address(0), "YexFTOLibrary: ZERO_ADDRESS");
     }
 
     // calculates the CREATE2 address for a pair without making any external calls
     function pairFor(
         address factory,
-        address baseToken,
-        address fairToken
+        address raisedToken,
+        address launchedToken
     ) internal pure returns (address pair) {
-        (address token0, address token1) = sortTokens(baseToken, fairToken);
+        (address token0, address token1) = sortTokens(raisedToken, launchedToken);
         pair = address(
             uint160(
                 uint(

@@ -9,30 +9,30 @@ interface IYexFTOFactory {
         uint
     );
 
-    event BaseTokenAdded(
+    event RaisedTokenAdded(
         address indexed token
     );
 
     function getPair(
-        address baseToken,
-        address fairToken
+        address raisedToken,
+        address launchedToken
     ) external view returns (address);
 
     function allPairs(uint) external view returns (address);
-    function baseTokens(uint) external view returns (address);
+    function raisedTokens(uint) external view returns (address);
 
     function allPairsLength() external view returns (uint);
 
-    function allBaseTokens() external view returns (address[] memory);
-    function isBaseToken(address) external view returns (bool);
+    function allRaisedTokens() external view returns (address[] memory);
+    function isRaisedToken(address) external view returns (bool);
 
     function createFTO(
-        address baseToken,
+        address raisedToken,
         string calldata name,
         string calldata symbol,
         uint256 amount,
         address poolHandler,
-        uint256 rasing_cycle
+        uint256 rasingCycle
     ) external returns (address pair);
 
     function addWhiteList(address caller) external;
