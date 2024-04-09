@@ -31,7 +31,6 @@ contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
     uint256 public baseTokenReserve;
 
     Status public FTOState = Status.Processing;
-    bool public paused;
 
     mapping(address => uint256) public baseTokenDeposit;
     mapping(address => uint256) public claimedLp;
@@ -50,12 +49,12 @@ contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
     }
 
     modifier whenPaused() {
-        require(paused, "Project is in progress");
+        require(FTOState == Status.Paused, "Project is in progress");
         _;
     }
 
     modifier whenNotPaused() {
-        require(!paused, "Project is not paused");
+        require(FTOState != Status.Paused, "Project is paused");
         _;
     }
 
@@ -146,7 +145,7 @@ contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
     }
 
     function withdraw(address withdrawer) external override lock {
-        require(FTOState == Status.Failed, "fund rasing not failed.");
+        require(FTOState == Status.Failed || FTOState == Status.Paused, "fund rasing not failed.");
         require(fairTokenProvider == withdrawer, "only provider can withdraw");
         IERC20(fairToken).transfer(withdrawer, depositedFairToken);
         emit Withdraw(withdrawer, depositedFairToken);
@@ -247,14 +246,15 @@ contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
     }
 
     function pause() external override {
+        require(block.timestamp < endTime, "fund rasing finished.");
         require(fairTokenProvider == tx.origin, "only provider can withdraw");
-        paused = true;
+        FTOState = Status.Paused;
         emit Paused(block.timestamp);
     }
 
     function resume() external override {
         require(fairTokenProvider == tx.origin, "only provider can withdraw");
-        paused = false;
+        FTOState = Status.Processing;
         emit Resumed(block.timestamp);
     }
 }

@@ -6,6 +6,7 @@ interface IYexFTOPair is AutomationCompatibleInterface {
     enum Status {
         Success,
         Failed,
+        Paused,
         Processing
     }
     event Deposit(address indexed depositer, uint);
