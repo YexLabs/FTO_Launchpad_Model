@@ -16,80 +16,92 @@ contract YexFTOFacade is IYexFTOFacade, Ownable {
     }
 
     function getFTOPair(
-        address baseToken,
-        address fairToken
+        address raisedToken,
+        address launchedToken
     ) public view returns (address pair) {
-        pair = YexFTOLibrary.pairFor(factory, baseToken, fairToken);
+        pair = YexFTOLibrary.pairFor(factory, raisedToken, launchedToken);
     }
 
     function getFTOPairProvider(
-        address baseToken,
-        address fairToken
+        address raisedToken,
+        address launchedToken
     ) public view returns (address provider) {
-        address pair = YexFTOLibrary.pairFor(factory, baseToken, fairToken);
-        provider = IYexFTOPair(pair).fairTokenProvider();
+        address pair = YexFTOLibrary.pairFor(factory, raisedToken, launchedToken);
+        provider = IYexFTOPair(pair).launchedTokenProvider();
     }
 
     function getFTOState(
-        address baseToken,
-        address fairToken
+        address raisedToken,
+        address launchedToken
     ) public view override returns (uint256 state) {
-        address pair = YexFTOLibrary.pairFor(factory, baseToken, fairToken);
+        address pair = YexFTOLibrary.pairFor(factory, raisedToken, launchedToken);
         state = uint256(IYexFTOPair(pair).FTOState());
     }
 
     function deposit(
-        address baseToken,
-        address fairToken,
-        uint256 baseTokenAmount,
-        uint256 fairTokenAmount
+        address raisedToken,
+        address launchedToken,
+        uint256 raisedTokenAmount,
+        uint256 launchedTokenAmount
     ) external override {
-        _deposit(baseToken, fairToken, baseTokenAmount, fairTokenAmount);
+        _deposit(raisedToken, launchedToken, raisedTokenAmount, launchedTokenAmount);
     }
 
-    function withdraw(address baseToken, address fairToken) external override {
-        require(
-            getFTOPairProvider(baseToken, fairToken) == msg.sender,
-            "only provider can withdraw"
-        );
-        address pair = YexFTOLibrary.pairFor(factory, baseToken, fairToken);
+    function withdraw(address raisedToken, address launchedToken) external override {
+        address pair = YexFTOLibrary.pairFor(factory, raisedToken, launchedToken);
         IYexFTOPair(pair).withdraw(msg.sender);
     }
 
-    function claimLP(address baseToken, address fairToken) external override {
-        address pair = YexFTOLibrary.pairFor(factory, baseToken, fairToken);
-        require(
-            getFTOPairProvider(baseToken, fairToken) == msg.sender ||
-                IYexFTOPair(pair).baseTokenDeposit(msg.sender) != 0,
-            "only fairToken provider or baseToken depositer can claim."
-        );
+    function claimLP(address raisedToken, address launchedToken) external override {
+        address pair = YexFTOLibrary.pairFor(factory, raisedToken, launchedToken);
         IYexFTOPair(pair).claimLP(msg.sender);
     }
 
+    function refundRaisedToken(
+        address raisedToken,
+        address launchedToken
+    ) external override {
+        address pair = YexFTOLibrary.pairFor(factory, raisedToken, launchedToken);
+        IYexFTOPair(pair).refundRaisedToken(msg.sender);
+    }
+
     function claimableLP(
-        address baseToken,
-        address fairToken
+        address raisedToken,
+        address launchedToken
     ) external view override returns (uint256) {
-        address pair = YexFTOLibrary.pairFor(factory, baseToken, fairToken);
+        address pair = YexFTOLibrary.pairFor(factory, raisedToken, launchedToken);
         return IYexFTOPair(pair).claimableLP(msg.sender);
     }
 
     function _deposit(
-        address baseToken,
-        address fairToken,
-        uint256 baseTokenAmount,
-        uint256 fairTokenAmount
+        address raisedToken,
+        address launchedToken,
+        uint256 raisedTokenAmount,
+        uint256 launchedTokenAmount
     ) internal {
-        require(baseTokenAmount > 0 || fairTokenAmount > 0, "INSUFFICIENT_INPUT_AMOUNT");
-        address pair = YexFTOLibrary.pairFor(factory, baseToken, fairToken);
+        require(
+            raisedTokenAmount > 0 || launchedTokenAmount > 0,
+            "INSUFFICIENT_INPUT_AMOUNT"
+        );
+        address pair = YexFTOLibrary.pairFor(factory, raisedToken, launchedToken);
         // transfer amount to pair
-        if (baseTokenAmount > 0) {
-            TransferHelper.safeTransferFrom(baseToken, msg.sender, pair, baseTokenAmount);
-            IYexFTOPair(pair).depositBaseToken(msg.sender, baseTokenAmount);
+        if (raisedTokenAmount > 0) {
+            TransferHelper.safeTransferFrom(
+                raisedToken,
+                msg.sender,
+                pair,
+                raisedTokenAmount
+            );
+            IYexFTOPair(pair).depositRaisedToken(msg.sender, raisedTokenAmount);
         }
-        if (fairTokenAmount > 0) {
-            TransferHelper.safeTransferFrom(fairToken, msg.sender, pair, fairTokenAmount);
-            IYexFTOPair(pair).depositFairToken(msg.sender, fairTokenAmount);
+        if (launchedTokenAmount > 0) {
+            TransferHelper.safeTransferFrom(
+                launchedToken,
+                msg.sender,
+                pair,
+                launchedTokenAmount
+            );
+            IYexFTOPair(pair).depositLaunchedToken(msg.sender, launchedTokenAmount);
         }
     }
 }
