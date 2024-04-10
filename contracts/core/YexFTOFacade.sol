@@ -48,21 +48,12 @@ contract YexFTOFacade is IYexFTOFacade, Ownable {
     }
 
     function withdraw(address raisedToken, address launchedToken) external override {
-        require(
-            getFTOPairProvider(raisedToken, launchedToken) == msg.sender,
-            "only provider can withdraw"
-        );
         address pair = YexFTOLibrary.pairFor(factory, raisedToken, launchedToken);
         IYexFTOPair(pair).withdraw(msg.sender);
     }
 
     function claimLP(address raisedToken, address launchedToken) external override {
         address pair = YexFTOLibrary.pairFor(factory, raisedToken, launchedToken);
-        require(
-            getFTOPairProvider(raisedToken, launchedToken) == msg.sender ||
-                IYexFTOPair(pair).raisedTokenDeposit(msg.sender) != 0,
-            "only launchedToken provider or raisedToken depositer can claim."
-        );
         IYexFTOPair(pair).claimLP(msg.sender);
     }
 
@@ -71,11 +62,6 @@ contract YexFTOFacade is IYexFTOFacade, Ownable {
         address launchedToken
     ) external override {
         address pair = YexFTOLibrary.pairFor(factory, raisedToken, launchedToken);
-        require(
-            getFTOPairProvider(raisedToken, launchedToken) == msg.sender ||
-                IYexFTOPair(pair).raisedTokenDeposit(msg.sender) != 0,
-            "only raisedToken depositer can get refund."
-        );
         IYexFTOPair(pair).refundRaisedToken(msg.sender);
     }
 
