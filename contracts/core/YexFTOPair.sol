@@ -132,11 +132,11 @@ contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
         address depositer
     ) external override lock whenPaused {
         require(block.timestamp < endTime, "deposit: raising time is over");
-        require(
-            depositer != launchedTokenProvider,
-            "Project owner are not allowed to refund"
-        );
         uint256 deposit_amount = raisedTokenDeposit[depositer];
+        require(
+            deposit_amount > 0,
+            "refundable amount is 0"
+        );
        
         IERC20(raisedToken).transfer(depositer, deposit_amount);
         raisedTokenDeposit[depositer] = 0;
@@ -247,13 +247,16 @@ contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
 
     function pause() external override {
         require(block.timestamp < endTime, "fund rasing finished.");
-        require(launchedTokenProvider == tx.origin, "only provider can withdraw");
+        require(msg.sender == factory, "only factory can pause");
+        require(FTOState == Status.Processing, "Launchpad is not in progress");
         FTOState = Status.Paused;
         emit Paused(block.timestamp);
     }
 
     function resume() external override {
-        require(launchedTokenProvider == tx.origin, "only provider can withdraw");
+        require(block.timestamp < endTime, "fund rasing finished.");
+        require(msg.sender == factory, "only factory can resume");
+        require(FTOState == Status.Paused, "Launchpad is in processing or finished");
         FTOState = Status.Processing;
         emit Resumed(block.timestamp);
     }

@@ -79,24 +79,6 @@ contract YexFTOFacade is IYexFTOFacade, Ownable {
         IYexFTOPair(pair).refundRaisedToken(msg.sender);
     }
 
-    function pause(address raisedToken, address launchedToken) external override {
-        require(
-            getFTOPairProvider(raisedToken, launchedToken) == msg.sender,
-            "only provider can pause"
-        );
-        address pair = YexFTOLibrary.pairFor(factory, raisedToken, launchedToken);
-        IYexFTOPair(pair).pause();
-    }
-
-    function resume(address raisedToken, address launchedToken) external override {
-        require(
-            getFTOPairProvider(raisedToken, launchedToken) == msg.sender,
-            "only provider can resume"
-        );
-        address pair = YexFTOLibrary.pairFor(factory, raisedToken, launchedToken);
-        IYexFTOPair(pair).resume();
-    }
-
     function claimableLP(
         address raisedToken,
         address launchedToken

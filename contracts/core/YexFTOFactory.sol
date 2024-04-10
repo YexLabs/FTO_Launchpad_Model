@@ -60,27 +60,13 @@ contract YexFTOFactory is IYexFTOFactory, Ownable {
     mapping(address => address[]) private eventParticipants;
     mapping(address => mapping(address => bool)) private events_map;
 
-    mapping(address => bool) public whitelists;
     mapping(address => mapping(address => address)) public getPair;
     mapping(address => bool) public isRaisedToken;
 
-    bool private noWhiteList;
 
     // for ChainLink automation
     LinkTokenInterface public i_link;
     AutomationRegistrarInterface public i_registrar;
-
-    modifier onlyWhitelistCaller() {
-        require(
-            noWhiteList == true || whitelists[msg.sender] == true,
-            "Caller is not a whitelist member."
-        );
-        _;
-    }
-
-    function setNoWhiteList(bool req) external onlyOwner {
-        noWhiteList = req;
-    }
 
     function addEvent(address depositer, address ftoPair) external override {
         require(
@@ -99,18 +85,6 @@ contract YexFTOFactory is IYexFTOFactory, Ownable {
         return eventParticipants[depositer];
     }
 
-    function addWhiteList(address caller) external override onlyOwner {
-        if (!whitelists[caller]) {
-            whitelists[caller] = true;
-        }
-    }
-
-    function removeWhiteList(address caller) external override onlyOwner {
-        if (whitelists[caller]) {
-            whitelists[caller] = false;
-        }
-    }
-
     function addRaisedToken(address _raisedToken) external onlyOwner {
         if (!isRaisedToken[_raisedToken]) {
             raisedTokens.push(_raisedToken);
@@ -126,7 +100,7 @@ contract YexFTOFactory is IYexFTOFactory, Ownable {
         uint256 _amount,
         address poolHandler,
         uint256 raisingCycle
-    ) external override onlyWhitelistCaller returns (address pair) {
+    ) external override returns (address pair) {
         ERC20Mintable _launchedToken = new ERC20Mintable(name, symbol);
         uint256 amount = _amount; // mint _amount launchedToken
         address launchedToken = address(_launchedToken);
@@ -194,60 +168,29 @@ contract YexFTOFactory is IYexFTOFactory, Ownable {
         // _registerAndPredictID(pair);
     }
 
-    // function setAutomationConfig(
-    //     LinkTokenInterface link,
-    //     AutomationRegistrarInterface registrar
-    // ) external onlyOwner {
-    //     i_link = link;
-    //     i_registrar = registrar;
-    // }
+    function pause(address raisedToken, address launchedToken) external override {
+        require(
+            getFTOPairProvider(raisedToken, launchedToken) == msg.sender,
+            "only provider can pause"
+        );
+        address pair = getPair[raisedToken][launchedToken];
+        IYexFTOPair(pair).pause();
+    }
 
-    // function _registerAndPredictID(address pair) public {
-    //     // register automation
-    //     string memory name = "FTO upkeep";
-    //     bytes memory encryptedEmail = bytes("0x");
-    //     address upkeepContract = pair;
-    //     uint32 gasLimit = 500000;
-    //     address adminAddress = owner();
-    //     uint8 triggerType = 0;
-    //     bytes memory checkData = bytes("0x");
-    //     bytes memory triggerConfig = bytes("0x");
-    //     bytes memory offchainConfig = bytes("0x");
-    //     uint96 amount = 1000000000000000000; // 1 Link
+    function resume(address raisedToken, address launchedToken) external override {
+        require(
+            getFTOPairProvider(raisedToken, launchedToken) == msg.sender,
+            "only provider can resume"
+        );
+        address pair = getPair[raisedToken][launchedToken];
+        IYexFTOPair(pair).resume();
+    }
 
-    //     RegistrationParams memory params = RegistrationParams(
-    //         name,
-    //         encryptedEmail,
-    //         upkeepContract,
-    //         gasLimit,
-    //         adminAddress,
-    //         triggerType,
-    //         checkData,
-    //         triggerConfig,
-    //         offchainConfig,
-    //         amount
-    //     );
-
-    //     // LINK must be approved for transfer - this can be done every time or once
-    //     // with an infinite approval
-    //     i_link.approve(address(i_registrar), params.amount);
-    //     uint256 upkeepID = i_registrar.registerUpkeep(params);
-    //     if (upkeepID != 0) {
-    //         // DEV - Use the upkeepID however you see fit
-    //     } else {
-    //         revert("auto-approve disabled");
-    //     }
-    // }
-
-    // bytes32 public merkleRoot;
-    // function setMerkleRoot(bytes32 _merkleRoot) external onlyOwner {
-    //     merkleRoot = _merkleRoot;
-    // }
-    // function verifyMerkleProof(
-    //     address caller,
-    //     bytes32[] memory proof
-    // ) private view returns (bool) {
-    //     bytes32 node = keccak256(bytes.concat(keccak256(abi.encode(caller))));
-    //     return MerkleProofUpgradeable.verify(proof, merkleRoot, node);
-    // }
+    function getFTOPairProvider(
+        address raisedToken,
+        address launchedToken
+    ) public view returns (address provider) {
+        address pair = getPair[raisedToken][launchedToken];
+        provider = IYexFTOPair(pair).launchedTokenProvider();
+    }
 }

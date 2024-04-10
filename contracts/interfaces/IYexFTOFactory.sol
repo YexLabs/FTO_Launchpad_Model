@@ -25,6 +25,9 @@ interface IYexFTOFactory {
 
     function allRaisedTokens() external view returns (address[] memory);
     function isRaisedToken(address) external view returns (bool);
+    
+    function pause(address raisedToken, address launchedToken) external;
+    function resume(address raisedToken, address launchedToken) external;
 
     function createFTO(
         address raisedToken,
@@ -34,10 +37,6 @@ interface IYexFTOFactory {
         address poolHandler,
         uint256 rasingCycle
     ) external returns (address pair);
-
-    function addWhiteList(address caller) external;
-
-    function removeWhiteList(address caller) external;
 
     function addEvent(address depositer, address ftoPair) external;
 
