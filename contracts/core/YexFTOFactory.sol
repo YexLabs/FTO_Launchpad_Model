@@ -63,7 +63,6 @@ contract YexFTOFactory is IYexFTOFactory, Ownable {
     mapping(address => mapping(address => address)) public getPair;
     mapping(address => bool) public isRaisedToken;
 
-
     // for ChainLink automation
     LinkTokenInterface public i_link;
     AutomationRegistrarInterface public i_registrar;
@@ -94,6 +93,7 @@ contract YexFTOFactory is IYexFTOFactory, Ownable {
     }
 
     function createFTO(
+        address provider,
         address raisedToken,
         string calldata name,
         string calldata symbol,
@@ -108,7 +108,7 @@ contract YexFTOFactory is IYexFTOFactory, Ownable {
         pair = _createPair(
             raisedToken,
             launchedToken,
-            msg.sender,
+            provider,
             poolHandler,
             raisingCycle
         );
@@ -131,8 +131,14 @@ contract YexFTOFactory is IYexFTOFactory, Ownable {
         address swapHandler,
         uint256 raisingCycle
     ) internal returns (address pair) {
-        require(raisedToken != launchedToken, "YexFTOFactory: IDENTICAL_ADDRESSES");
-        require(isRaisedToken[raisedToken], "YexFTOFactory: NOT_ALLOWED_BASE_TOKEN");
+        require(
+            raisedToken != launchedToken,
+            "YexFTOFactory: IDENTICAL_ADDRESSES"
+        );
+        require(
+            isRaisedToken[raisedToken],
+            "YexFTOFactory: NOT_ALLOWED_BASE_TOKEN"
+        );
 
         (address token0, address token1) = raisedToken < launchedToken
             ? (raisedToken, launchedToken)
@@ -168,7 +174,10 @@ contract YexFTOFactory is IYexFTOFactory, Ownable {
         // _registerAndPredictID(pair);
     }
 
-    function pause(address raisedToken, address launchedToken) external override {
+    function pause(
+        address raisedToken,
+        address launchedToken
+    ) external override {
         require(
             getFTOPairProvider(raisedToken, launchedToken) == msg.sender,
             "only provider can pause"
@@ -177,7 +186,10 @@ contract YexFTOFactory is IYexFTOFactory, Ownable {
         IYexFTOPair(pair).pause();
     }
 
-    function resume(address raisedToken, address launchedToken) external override {
+    function resume(
+        address raisedToken,
+        address launchedToken
+    ) external override {
         require(
             getFTOPairProvider(raisedToken, launchedToken) == msg.sender,
             "only provider can resume"

@@ -9,9 +9,7 @@ interface IYexFTOFactory {
         uint
     );
 
-    event RaisedTokenAdded(
-        address indexed token
-    );
+    event RaisedTokenAdded(address indexed token);
 
     function getPair(
         address raisedToken,
@@ -19,17 +17,21 @@ interface IYexFTOFactory {
     ) external view returns (address);
 
     function allPairs(uint) external view returns (address);
+
     function raisedTokens(uint) external view returns (address);
 
     function allPairsLength() external view returns (uint);
 
     function allRaisedTokens() external view returns (address[] memory);
+
     function isRaisedToken(address) external view returns (bool);
-    
+
     function pause(address raisedToken, address launchedToken) external;
+
     function resume(address raisedToken, address launchedToken) external;
 
     function createFTO(
+        address provider,
         address raisedToken,
         string calldata name,
         string calldata symbol,
