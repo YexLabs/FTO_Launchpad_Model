@@ -30,6 +30,7 @@ interface IYexFTOFactory {
     function resume(address raisedToken, address launchedToken) external;
 
     function createFTO(
+        address provider,
         address raisedToken,
         string calldata name,
         string calldata symbol,
