@@ -11,8 +11,10 @@ import "../interfaces/IUniswapV2Router02.sol";
 import "../interfaces/IUniswapV2Factory.sol";
 import "../interfaces/IUniswapV2Pair.sol";
 import "../libraries/TransferHelper.sol";
+import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 
-contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
+contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP"), IERC165 {
+
     address public raisedToken; // tokenA is used to subscribe tokenB
     address public launchedToken; // tokenB is the issuer
 
@@ -78,6 +80,13 @@ contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
         otherPool = _otherPool;
     }
 
+    // ERC165 Interface ID for MyInterface
+    bytes4 private constant _INTERFACE_ID_MY_INTERFACE = type(IYexFTOPair).interfaceId;
+
+    function supportsInterface(bytes4 interfaceId) public view returns (bool) {
+        return interfaceId == _INTERFACE_ID_MY_INTERFACE;
+    }
+
     function depositLaunchedToken(
         address depositer,
         uint256 amount
@@ -138,8 +147,8 @@ contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
             "refundable amount is 0"
         );
        
-        IERC20(raisedToken).transfer(depositer, deposit_amount);
         raisedTokenDeposit[depositer] = 0;
+        IERC20(raisedToken).transfer(depositer, deposit_amount);
 
         emit Refund(depositer, deposit_amount);
     }
