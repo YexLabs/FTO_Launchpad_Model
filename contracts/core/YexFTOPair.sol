@@ -11,9 +11,8 @@ import "../interfaces/IUniswapV2Router02.sol";
 import "../interfaces/IUniswapV2Factory.sol";
 import "../interfaces/IUniswapV2Pair.sol";
 import "../libraries/TransferHelper.sol";
-import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 
-contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP"), IERC165 {
+contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
 
     address public raisedToken; // tokenA is used to subscribe tokenB
     address public launchedToken; // tokenB is the issuer
@@ -78,13 +77,6 @@ contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP"), IERC165 {
         launchedTokenProvider = _launchedTokenProvider;
         endTime = block.timestamp + raisingCycle;
         otherPool = _otherPool;
-    }
-
-    // ERC165 Interface ID for MyInterface
-    bytes4 private constant _INTERFACE_ID_MY_INTERFACE = type(IYexFTOPair).interfaceId;
-
-    function supportsInterface(bytes4 interfaceId) public view returns (bool) {
-        return interfaceId == _INTERFACE_ID_MY_INTERFACE;
     }
 
     function depositLaunchedToken(
