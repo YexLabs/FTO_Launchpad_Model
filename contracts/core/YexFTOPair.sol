@@ -13,6 +13,7 @@ import "../interfaces/IUniswapV2Pair.sol";
 import "../libraries/TransferHelper.sol";
 
 contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
+
     address public raisedToken; // tokenA is used to subscribe tokenB
     address public launchedToken; // tokenB is the issuer
 
@@ -138,8 +139,8 @@ contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
             "refundable amount is 0"
         );
        
-        IERC20(raisedToken).transfer(depositer, deposit_amount);
         raisedTokenDeposit[depositer] = 0;
+        IERC20(raisedToken).transfer(depositer, deposit_amount);
 
         emit Refund(depositer, deposit_amount);
     }
