@@ -4,6 +4,7 @@ pragma solidity =0.8.16;
 
 import "./UniswapV2ERC20.sol";
 import "../libraries/Math.sol";
+import "../libraries/UniswapV2Library.sol";
 import "../libraries/UQ112x112.sol";
 import "../interfaces/IERC20.sol";
 import "../interfaces/IUniswapV2Factory.sol";
@@ -155,19 +156,7 @@ contract UniswapV2Pair is UniswapV2ERC20 {
             liquidity = Math.sqrt(amount0.mul(amount1)).sub(MINIMUM_LIQUIDITY);
             _mint(address(0), MINIMUM_LIQUIDITY); // permanently lock the first MINIMUM_LIQUIDITY tokens
         } else {
-            liquidity = 0;
-            if(amount0>0){
-                liquidity +=
-                    (lp_supply * Math.sqrt((amount0 + _reserve0) * _reserve0)) /
-                    _reserve0 -
-                    _totalSupply;
-            }
-            if(amount1>0){
-                liquidity +=
-                    (lp_supply * Math.sqrt((amount1 + _reserve1) * _reserve1)) /
-                    _reserve1 -
-                    _totalSupply;
-            }
+            liquidity = UniswapV2Library.LiquidityToAdd(_totalSupply, amount0, amount1, _reserve0, _reserve1);
         }
         require(liquidity > 0, "UniswapV2: INSUFFICIENT_LIQUIDITY_MINTED");
         _mint(to, liquidity);
