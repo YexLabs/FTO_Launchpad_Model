@@ -161,6 +161,7 @@ contract UniswapV2Pair is UniswapV2ERC20 {
                     (lp_supply * Math.sqrt((amount0 + _reserve0) * _reserve0)) /
                     _reserve0 -
                     _totalSupply;
+                _totalSupply += liquidity; // _totalSupply should be updated in the next calc
             }
             if(amount1>0){
                 liquidity +=
