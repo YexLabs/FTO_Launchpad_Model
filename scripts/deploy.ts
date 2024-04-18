@@ -1,12 +1,13 @@
 import * as hre from 'hardhat'
 import * as dotenv from 'dotenv'
 import { verify } from './verify-contract'
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 
 dotenv.config()
 
 async function main() {
-  const factoryAddy = await deployFactory(process.env.FEE_WALLET)
-  await deployRouter02(factoryAddy, process.env.WETH_ADDY)
+  const factoryAddy = await deployFactory(process.env.FEE_WALLET!)
+  await deployRouter02(factoryAddy, process.env.WETH_ADDY!)
 }
 
 async function deployFactory(feeWalletAddy: string) {
@@ -20,7 +21,7 @@ async function deployFactory(feeWalletAddy: string) {
   await factoryContract.deployTransaction.wait(6)
   console.log("Confirmed!")
 
-  await verify(factoryContract.address, [process.env.FEE_WALLET])
+  await verify(factoryContract.address,"contracts/core/UniswapV2Factory.sol:UniswapV2Factory", [process.env.FEE_WALLET])
 
   return factoryContract.address
 }
@@ -36,7 +37,7 @@ async function deployRouter02(factoryContractAddy: string, WETHAddy: string) {
   await router02Contract.deployTransaction.wait(6)
   console.log("Confirmed!")
 
-  await verify(router02Contract.address, [factoryContractAddy, WETHAddy])
+  await verify(router02Contract.address,"contracts/periphery/UniswapV2Router02.sol:UniswapV2Router02", [factoryContractAddy, WETHAddy])
 }
 
 main().catch((error) => {

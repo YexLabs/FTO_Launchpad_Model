@@ -5,7 +5,6 @@ pragma solidity =0.8.16;
 import "../interfaces/IUniswapV2Pair.sol";
 
 import "./SafeMathUniswap.sol";
-import "./Math.sol";
 
 library UniswapV2Library {
     using SafeMathUniswap for uint;
@@ -37,7 +36,7 @@ library UniswapV2Library {
                             hex"ff",
                             factory,
                             keccak256(abi.encodePacked(token0, token1)),
-                            hex"96e8ac4277198ff8b6f785478aa9a39f403cb768dd02cbee326c3e7da348845f" // init code hash
+                            hex"b88846c113feb7c60457f734d74299c3dbb10ae7aa05439cb58798fc2b414047" // init code hash
                         )
                     )
                 )
@@ -145,23 +144,4 @@ library UniswapV2Library {
         }
     }
 
-    function LiquidityToAdd(
-        uint256 totalSupply,
-        uint256 amount0,
-        uint256 amount1,
-        uint256 reserve0,
-        uint256 reserve1
-    ) internal pure returns (uint256 liquidityToAdd) {
-        if (amount0 > 0) {
-            liquidityToAdd = (totalSupply * Math.sqrt((amount0 + reserve0) * reserve0)) / reserve0 - totalSupply;
-            totalSupply += liquidityToAdd; 
-        }
-
-        if (amount1 > 0) {
-            uint256 newLiquidity = (totalSupply * Math.sqrt((amount1 + reserve1) * reserve1)) / reserve1 - totalSupply;
-            liquidityToAdd = liquidityToAdd + newLiquidity; // Adding liquidity from amount1
-        }
-
-        return liquidityToAdd;
-    }
 }

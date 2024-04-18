@@ -19,7 +19,7 @@ async function deployRouter02(factoryContractAddy: any, WETHAddy: any) {
   await router02Contract.deployTransaction.wait(6)
   console.log("Confirmed!")
 
-  await verify(router02Contract.address, [factoryContractAddy, WETHAddy])
+  await verify(router02Contract.address, "contracts/periphery/UniswapV2Router02:UniswapV2Router02", [factoryContractAddy, WETHAddy])
 }
 
 main().catch((error) => {
