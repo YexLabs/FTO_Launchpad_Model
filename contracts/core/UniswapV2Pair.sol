@@ -155,10 +155,7 @@ contract UniswapV2Pair is UniswapV2ERC20 {
             liquidity = Math.sqrt(amount0.mul(amount1)).sub(MINIMUM_LIQUIDITY);
             _mint(address(0), MINIMUM_LIQUIDITY); // permanently lock the first MINIMUM_LIQUIDITY tokens
         } else {
-            liquidity = Math.min(
-                amount0.mul(_totalSupply) / _reserve0,
-                amount1.mul(_totalSupply) / _reserve1
-            );
+            liquidity = _liquidityToAdd(_totalSupply, amount0, amount1, _reserve0, _reserve1);
         }
         require(liquidity > 0, "UniswapV2: INSUFFICIENT_LIQUIDITY_MINTED");
         _mint(to, liquidity);
@@ -197,7 +194,7 @@ contract UniswapV2Pair is UniswapV2ERC20 {
         if (feeOn) kLast = uint(reserve0).mul(reserve1); // reserve0 and reserve1 are up-to-date
         emit Burn(msg.sender, amount0, amount1, to);
     }
-
+    
     // this low-level function should be called from a contract which performs important safety checks
     function swap(
         uint amount0Out,
@@ -283,5 +280,25 @@ contract UniswapV2Pair is UniswapV2ERC20 {
             reserve0,
             reserve1
         );
+    }
+
+    function _liquidityToAdd(
+        uint256 _totalSupply,
+        uint256 _amount0,
+        uint256 _amount1,
+        uint256 _reserve0,
+        uint256 _reserve1
+    ) internal pure returns (uint256 liquidity) {
+        if (_amount0 > 0) {
+            liquidity = (_totalSupply * Math.sqrt((_amount0 + _reserve0) * _reserve0)) / _reserve0 - _totalSupply;
+            _totalSupply += liquidity; 
+        }
+
+        if (_amount1 > 0) {
+            uint256 newLiquidity = (_totalSupply * Math.sqrt((_amount1 + _reserve1) * _reserve1)) / _reserve1 - _totalSupply;
+            liquidity = liquidity + newLiquidity; // Adding liquidity from amount1
+        }
+
+        return liquidity;
     }
 }

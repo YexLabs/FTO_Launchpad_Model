@@ -47,6 +47,9 @@ contract UniswapV2Router02 is IUniswapV2Router02 {
         (uint reserveA, uint reserveB) = UniswapV2Library.getReserves(factory, tokenA, tokenB);
         if (reserveA == 0 && reserveB == 0) {
             (amountA, amountB) = (amountADesired, amountBDesired);
+        } else if (amountADesired == 0 || amountBDesired == 0 ) {
+            // single side liquidity
+            (amountA, amountB) = (amountADesired, amountBDesired);
         } else {
             uint amountBOptimal = UniswapV2Library.quote(amountADesired, reserveA, reserveB);
             if (amountBOptimal <= amountBDesired) {
