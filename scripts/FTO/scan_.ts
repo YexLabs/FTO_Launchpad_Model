@@ -13,7 +13,7 @@ async function main() {
 }
 
 async function scanUpKeep() {
-  const factory = "0x16b7e526cE35061de7c26E6D943687460637BB6D";
+  const factory = "0xEd6a0A29A962B4296bCeEC4e1E55F5Ec0474EAC7";
 
   const FTOFactory = await ethers.getContractFactory("YexFTOFactory");
   const FTOPair = await ethers.getContractFactory("YexFTOPair");

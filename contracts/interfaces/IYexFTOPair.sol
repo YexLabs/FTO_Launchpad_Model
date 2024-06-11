@@ -37,5 +37,4 @@ interface IYexFTOPair is AutomationCompatibleInterface {
     function raisedTokenDeposit(address) external view returns (uint256);
 
     function FTOState() external view returns (Status);
-
 }

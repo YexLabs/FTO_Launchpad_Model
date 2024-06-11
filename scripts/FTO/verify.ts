@@ -8,11 +8,7 @@ async function main() {
 }
 
 async function verifyFTOFactory() {
-  const v1 = verify(
-    "0xad88D4ABbE0d0672f00eB3B83E6518608d82e95d",
-    "contracts/core/YexFTOFactory.sol:YexFTOFactory",
-    []
-  );
+  const v1 = verify("0xf53f1eFd3bD5AaCBcc05BeDA45b43c3F16e2B77F", []);
   await v1;
 }
 

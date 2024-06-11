@@ -26,7 +26,11 @@ contract YexFTOFacade is IYexFTOFacade, Ownable {
         address raisedToken,
         address launchedToken
     ) public view returns (address provider) {
-        address pair = YexFTOLibrary.pairFor(factory, raisedToken, launchedToken);
+        address pair = YexFTOLibrary.pairFor(
+            factory,
+            raisedToken,
+            launchedToken
+        );
         provider = IYexFTOPair(pair).launchedTokenProvider();
     }
 
@@ -34,7 +38,11 @@ contract YexFTOFacade is IYexFTOFacade, Ownable {
         address raisedToken,
         address launchedToken
     ) public view override returns (uint256 state) {
-        address pair = YexFTOLibrary.pairFor(factory, raisedToken, launchedToken);
+        address pair = YexFTOLibrary.pairFor(
+            factory,
+            raisedToken,
+            launchedToken
+        );
         state = uint256(IYexFTOPair(pair).FTOState());
     }
 
@@ -44,16 +52,35 @@ contract YexFTOFacade is IYexFTOFacade, Ownable {
         uint256 raisedTokenAmount,
         uint256 launchedTokenAmount
     ) external override {
-        _deposit(raisedToken, launchedToken, raisedTokenAmount, launchedTokenAmount);
+        _deposit(
+            raisedToken,
+            launchedToken,
+            raisedTokenAmount,
+            launchedTokenAmount
+        );
     }
 
-    function withdraw(address raisedToken, address launchedToken) external override {
-        address pair = YexFTOLibrary.pairFor(factory, raisedToken, launchedToken);
+    function withdraw(
+        address raisedToken,
+        address launchedToken
+    ) external override {
+        address pair = YexFTOLibrary.pairFor(
+            factory,
+            raisedToken,
+            launchedToken
+        );
         IYexFTOPair(pair).withdraw(msg.sender);
     }
 
-    function claimLP(address raisedToken, address launchedToken) external override {
-        address pair = YexFTOLibrary.pairFor(factory, raisedToken, launchedToken);
+    function claimLP(
+        address raisedToken,
+        address launchedToken
+    ) external override {
+        address pair = YexFTOLibrary.pairFor(
+            factory,
+            raisedToken,
+            launchedToken
+        );
         IYexFTOPair(pair).claimLP(msg.sender);
     }
 
@@ -61,7 +88,11 @@ contract YexFTOFacade is IYexFTOFacade, Ownable {
         address raisedToken,
         address launchedToken
     ) external override {
-        address pair = YexFTOLibrary.pairFor(factory, raisedToken, launchedToken);
+        address pair = YexFTOLibrary.pairFor(
+            factory,
+            raisedToken,
+            launchedToken
+        );
         IYexFTOPair(pair).refundRaisedToken(msg.sender);
     }
 
@@ -69,7 +100,11 @@ contract YexFTOFacade is IYexFTOFacade, Ownable {
         address raisedToken,
         address launchedToken
     ) external view override returns (uint256) {
-        address pair = YexFTOLibrary.pairFor(factory, raisedToken, launchedToken);
+        address pair = YexFTOLibrary.pairFor(
+            factory,
+            raisedToken,
+            launchedToken
+        );
         return IYexFTOPair(pair).claimableLP(msg.sender);
     }
 
@@ -83,7 +118,11 @@ contract YexFTOFacade is IYexFTOFacade, Ownable {
             raisedTokenAmount > 0 || launchedTokenAmount > 0,
             "INSUFFICIENT_INPUT_AMOUNT"
         );
-        address pair = YexFTOLibrary.pairFor(factory, raisedToken, launchedToken);
+        address pair = YexFTOLibrary.pairFor(
+            factory,
+            raisedToken,
+            launchedToken
+        );
         // transfer amount to pair
         if (raisedTokenAmount > 0) {
             TransferHelper.safeTransferFrom(
@@ -101,7 +140,10 @@ contract YexFTOFacade is IYexFTOFacade, Ownable {
                 pair,
                 launchedTokenAmount
             );
-            IYexFTOPair(pair).depositLaunchedToken(msg.sender, launchedTokenAmount);
+            IYexFTOPair(pair).depositLaunchedToken(
+                msg.sender,
+                launchedTokenAmount
+            );
         }
     }
 }

@@ -3,6 +3,7 @@ pragma solidity ^0.8.16;
 
 import "../interfaces/IYexFTOFactory.sol";
 import "./YexFTOPair.sol";
+import "./WhiteList.sol";
 import "../libraries/Ownable.sol";
 import "../libraries/ERC20.sol";
 import {LinkTokenInterface} from "@chainlink/contracts/src/v0.8/shared/interfaces/LinkTokenInterface.sol";
@@ -50,7 +51,7 @@ contract ERC20Mintable is ERC20, Ownable {
     }
 }
 
-contract YexFTOFactory is IYexFTOFactory, Ownable {
+contract YexFTOFactory is IYexFTOFactory, Ownable, WhiteList {
     address[] public allPairs;
     address[] public raisedTokens;
 
@@ -100,7 +101,7 @@ contract YexFTOFactory is IYexFTOFactory, Ownable {
         uint256 _amount,
         address poolHandler,
         uint256 raisingCycle
-    ) external override returns (address pair) {
+    ) external override onlyWhiteList returns (address pair) {
         ERC20Mintable _launchedToken = new ERC20Mintable(name, symbol);
         uint256 amount = _amount; // mint _amount launchedToken
         address launchedToken = address(_launchedToken);
@@ -177,11 +178,7 @@ contract YexFTOFactory is IYexFTOFactory, Ownable {
     function pause(
         address raisedToken,
         address launchedToken
-    ) external override {
-        require(
-            getFTOPairProvider(raisedToken, launchedToken) == msg.sender,
-            "only provider can pause"
-        );
+    ) external override onlyOwner {
         address pair = getPair[raisedToken][launchedToken];
         IYexFTOPair(pair).pause();
     }
@@ -189,11 +186,7 @@ contract YexFTOFactory is IYexFTOFactory, Ownable {
     function resume(
         address raisedToken,
         address launchedToken
-    ) external override {
-        require(
-            getFTOPairProvider(raisedToken, launchedToken) == msg.sender,
-            "only provider can resume"
-        );
+    ) external override onlyOwner {
         address pair = getPair[raisedToken][launchedToken];
         IYexFTOPair(pair).resume();
     }

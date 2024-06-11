@@ -90,7 +90,9 @@ contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
         if (amount == 0) {
             revert InvalidAmount();
         }
-        uint256 launchedTokenBalance = IERC20(launchedToken).balanceOf(address(this));
+        uint256 launchedTokenBalance = IERC20(launchedToken).balanceOf(
+            address(this)
+        );
         if (launchedTokenBalance != amount + depositedLaunchedToken) {
             revert InvalidUpdate();
         }
@@ -110,7 +112,9 @@ contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
         if (amount == 0) {
             revert InvalidAmount();
         }
-        uint256 raisedTokenBalance = IERC20(raisedToken).balanceOf(address(this));
+        uint256 raisedTokenBalance = IERC20(raisedToken).balanceOf(
+            address(this)
+        );
         if (raisedTokenBalance != amount + depositedRaisedToken) {
             revert InvalidUpdate();
         }
@@ -133,11 +137,8 @@ contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
     ) external override lock whenPaused {
         require(block.timestamp < endTime, "deposit: raising time is over");
         uint256 deposit_amount = raisedTokenDeposit[depositer];
-        require(
-            deposit_amount > 0,
-            "refundable amount is 0"
-        );
-       
+        require(deposit_amount > 0, "refundable amount is 0");
+
         IERC20(raisedToken).transfer(depositer, deposit_amount);
         raisedTokenDeposit[depositer] = 0;
 
@@ -145,8 +146,14 @@ contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
     }
 
     function withdraw(address withdrawer) external override lock {
-        require(FTOState == Status.Failed || FTOState == Status.Paused, "fund rasing not failed.");
-        require(launchedTokenProvider == withdrawer, "only provider can withdraw");
+        require(
+            FTOState == Status.Failed || FTOState == Status.Paused,
+            "fund rasing not failed."
+        );
+        require(
+            launchedTokenProvider == withdrawer,
+            "only provider can withdraw"
+        );
         IERC20(launchedToken).transfer(withdrawer, depositedLaunchedToken);
         emit Withdraw(withdrawer, depositedLaunchedToken);
     }
@@ -154,7 +161,8 @@ contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
     function claimLP(address claimer) external lock {
         require(FTOState == Status.Success, "fund rasing not success.");
         require(
-            launchedTokenProvider == claimer || raisedTokenDeposit[claimer] != 0,
+            launchedTokenProvider == claimer ||
+                raisedTokenDeposit[claimer] != 0,
             "only launched token provider or raised token depositer can claim."
         );
         address poolFactory = IUniswapV2Router02(otherPool).factory();
@@ -172,7 +180,7 @@ contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
 
         emit ClaimLP(claimer, lpAmount);
     }
-    
+
     function claimableLP(address claimer) external view returns (uint256) {
         require(FTOState == Status.Success, "fund rasing not success.");
         uint256 lpAmount = _calculateLPAmount(claimer);
@@ -256,7 +264,10 @@ contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
     function resume() external override {
         require(block.timestamp < endTime, "fund rasing finished.");
         require(msg.sender == factory, "only factory can resume");
-        require(FTOState == Status.Paused, "Launchpad is in processing or finished");
+        require(
+            FTOState == Status.Paused,
+            "Launchpad is in processing or finished"
+        );
         FTOState = Status.Processing;
         emit Resumed(block.timestamp);
     }

@@ -4,7 +4,7 @@ import { verify } from "../verify-contract";
 dotenv.config();
 
 async function main() {
-  const factoryAddr = "0x5AD84056574066c774C5e58BC4a0652b6c171253";
+  const factoryAddr = "0x13Db24fF75a7FB3Cc22Fa938c3a07C5938A7d0cD";
   await deployFTOFacade(factoryAddr);
 }
 
@@ -21,11 +21,7 @@ async function deployFTOFacade(factoryContractAddy: any) {
   await yexFTOFacadeContract.deployTransaction.wait(10);
   console.log("Confirmed!");
 
-  await verify(
-    yexFTOFacadeContract.address,
-    "contracts/core/YexFTOFacade.sol:YexFTOFacade",
-    [factoryContractAddy]
-  );
+  await verify(yexFTOFacadeContract.address, [factoryContractAddy]);
 
   return yexFTOFacadeContract.address;
 }

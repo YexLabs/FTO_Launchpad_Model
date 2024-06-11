@@ -22,13 +22,9 @@ async function deployFactory(feeWalletAddy: any) {
   await factoryContract.deployTransaction.wait(6);
   console.log("Confirmed!");
 
-  console.log("INIT_HASH_CODE", factoryContract.INIT_CODE_PAIR_HASH());
+  console.log("INIT_HASH_CODE", await factoryContract.INIT_CODE_PAIR_HASH());
 
-  await verify(
-    factoryContract.address,
-    "contracts/core/UniswapV2Factory.sol:UniswapV2Factory",
-    [process.env.FEE_WALLET]
-  );
+  await verify(factoryContract.address, [process.env.FEE_WALLET]);
 
   return factoryContract.address;
 }
