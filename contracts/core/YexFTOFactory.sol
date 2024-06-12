@@ -198,4 +198,13 @@ contract YexFTOFactory is IYexFTOFactory, Ownable, WhiteList {
         address pair = getPair[raisedToken][launchedToken];
         provider = IYexFTOPair(pair).launchedTokenProvider();
     }
+
+    function withdrawFee(
+        address raisedToken,
+        address launchedToken,
+        address feeTo
+    ) external onlyOwner {
+        address pair = getPair[raisedToken][launchedToken];
+        IYexFTOPair(pair).withdrawFee(feeTo);
+    }
 }

@@ -13,6 +13,8 @@ import "../interfaces/IUniswapV2Pair.sol";
 import "../libraries/TransferHelper.sol";
 
 contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
+    uint256 public fee; // default is 5%
+
     address public raisedToken; // tokenA is used to subscribe tokenB
     address public launchedToken; // tokenB is the issuer
 
@@ -218,7 +220,8 @@ contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
                 address(this),
                 block.timestamp + 10
             );
-            poolLP = liquidity;
+            poolLP = (liquidity * 95) / 100;
+            fee = liquidity - poolLP;
             address poolFactory = IUniswapV2Router02(otherPool).factory();
             address pair = IUniswapV2Factory(poolFactory).getPair(
                 raisedToken,
@@ -270,5 +273,18 @@ contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
         );
         FTOState = Status.Processing;
         emit Resumed(block.timestamp);
+    }
+
+    function withdrawFee(address feeTo) external override {
+        require(msg.sender == factory, "only factory can withdraw");
+        require(fee > 0, "amount to withdraw must be positive");
+
+        address poolFactory = IUniswapV2Router02(otherPool).factory();
+        address pair = IUniswapV2Factory(poolFactory).getPair(
+            raisedToken,
+            launchedToken
+        );
+        TransferHelper.safeTransfer(pair, feeTo, fee);
+        fee = 0;
     }
 }

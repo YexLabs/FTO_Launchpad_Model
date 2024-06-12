@@ -45,4 +45,10 @@ interface IYexFTOFactory {
     function events(
         address depositer
     ) external view returns (address[] memory pairs);
+
+    function withdrawFee(
+        address raisedToken,
+        address launchedToken,
+        address feeTo
+    ) external;
 }
