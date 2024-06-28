@@ -13,7 +13,7 @@ interface IYexFTOFacade {
 
     function withdraw(address raisedToken, address launchedToken) external;
 
-    function claimLP(address raisedToken, address launchedToken) external;
+    function claimLP(address raisedToken, address launchedToken, uint256 claimAmount) external;
 
     function refundRaisedToken(
         address raisedToken,

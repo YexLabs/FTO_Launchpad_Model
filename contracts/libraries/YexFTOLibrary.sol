@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0
-
-pragma solidity =0.8.16;
+pragma solidity ^0.8.16;
 
 import "../interfaces/IUniswapV2Pair.sol";
 
@@ -36,7 +35,7 @@ library YexFTOLibrary {
                             hex"ff",
                             factory,
                             keccak256(abi.encodePacked(token0, token1)),
-                            hex"7f663b417b1c9838cef8562bae9f209f8312315b342d9aa70fa8554caf026de3" // init code hash
+                            hex"2c1702114fdea584ff6a1412584acc0092dc64f51f975ebd7fbffbb2ecb36e5c" // init code hash
                         )
                     )
                 )

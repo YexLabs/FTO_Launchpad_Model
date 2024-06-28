@@ -36,7 +36,8 @@ interface IYexFTOFactory {
         string calldata symbol,
         uint256 amount,
         address poolHandler,
-        uint256 rasingCycle
+        uint256 rasingCycle,
+        address hook
     ) external returns (address pair);
 
     function addEvent(address depositer, address ftoPair) external;

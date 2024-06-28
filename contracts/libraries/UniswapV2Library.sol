@@ -36,7 +36,7 @@ library UniswapV2Library {
                             hex"ff",
                             factory,
                             keccak256(abi.encodePacked(token0, token1)),
-                            hex"b88846c113feb7c60457f734d74299c3dbb10ae7aa05439cb58798fc2b414047" // init code hash
+                            hex"f127f1a6f2040888a9d2d78c8df123dfd03fe571698992706a14d030db2ec373" // init code hash
                         )
                     )
                 )
@@ -54,6 +54,7 @@ library UniswapV2Library {
         (uint reserve0, uint reserve1, ) = IUniswapV2Pair(
             pairFor(factory, tokenA, tokenB)
         ).getReserves();
+
         (reserveA, reserveB) = tokenA == token0
             ? (reserve0, reserve1)
             : (reserve1, reserve0);

@@ -22,7 +22,7 @@ interface IYexFTOPair is AutomationCompatibleInterface {
 
     function withdraw(address withdrawer) external;
 
-    function claimLP(address claimer) external;
+    function claimLP(address claimer, uint256 amount) external;
 
     function pause() external;
 
@@ -30,7 +30,7 @@ interface IYexFTOPair is AutomationCompatibleInterface {
 
     function refundRaisedToken(address depositer) external;
 
-    function claimableLP(address claimer) external view returns (uint256);
+    function claimableAmount(address user) external view returns (uint256);
 
     function launchedTokenProvider() external view returns (address);
 
@@ -38,4 +38,6 @@ interface IYexFTOPair is AutomationCompatibleInterface {
 
     function FTOState() external view returns (Status);
 
+    function raisedToken() external view returns (address);
+    function launchedToken() external view returns (address);
 }

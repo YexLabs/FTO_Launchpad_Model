@@ -52,9 +52,9 @@ contract YexFTOFacade is IYexFTOFacade, Ownable {
         IYexFTOPair(pair).withdraw(msg.sender);
     }
 
-    function claimLP(address raisedToken, address launchedToken) external override {
+    function claimLP(address raisedToken, address launchedToken, uint256 claimAmount) external override {
         address pair = YexFTOLibrary.pairFor(factory, raisedToken, launchedToken);
-        IYexFTOPair(pair).claimLP(msg.sender);
+        IYexFTOPair(pair).claimLP(msg.sender, claimAmount);
     }
 
     function refundRaisedToken(
@@ -70,7 +70,7 @@ contract YexFTOFacade is IYexFTOFacade, Ownable {
         address launchedToken
     ) external view override returns (uint256) {
         address pair = YexFTOLibrary.pairFor(factory, raisedToken, launchedToken);
-        return IYexFTOPair(pair).claimableLP(msg.sender);
+        return IYexFTOPair(pair).claimableAmount(msg.sender);
     }
 
     function _deposit(
@@ -84,6 +84,7 @@ contract YexFTOFacade is IYexFTOFacade, Ownable {
             "INSUFFICIENT_INPUT_AMOUNT"
         );
         address pair = YexFTOLibrary.pairFor(factory, raisedToken, launchedToken);
+
         // transfer amount to pair
         if (raisedTokenAmount > 0) {
             TransferHelper.safeTransferFrom(

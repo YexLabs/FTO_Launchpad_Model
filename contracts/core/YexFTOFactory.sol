@@ -2,10 +2,13 @@
 pragma solidity ^0.8.16;
 
 import "../interfaces/IYexFTOFactory.sol";
+import "../interfaces/IYexFTOHook.sol";
 import "./YexFTOPair.sol";
 import "../libraries/Ownable.sol";
+import "../libraries/AccessControl.sol";
 import "../libraries/ERC20.sol";
 import {LinkTokenInterface} from "@chainlink/contracts/src/v0.8/shared/interfaces/LinkTokenInterface.sol";
+
 
 struct RegistrationParams {
     string name;
@@ -39,14 +42,25 @@ interface AutomationRegistrarInterface {
     ) external returns (uint256);
 }
 
-contract ERC20Mintable is ERC20, Ownable {
+contract ERC20Mintable is ERC20, AccessControl {
+    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
+    bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE");
+
     constructor(
         string memory name_,
-        string memory symbol_
-    ) ERC20(name_, symbol_) {}
+        string memory symbol_,
+        address hook
+    ) ERC20(name_, symbol_) {
+        _setupRole(MINTER_ROLE, _msgSender());
+        _setupRole(BURNER_ROLE, hook);
+    }
 
-    function mint(address to, uint256 amount) public onlyOwner {
+    function mint(address to, uint256 amount) public onlyRole(MINTER_ROLE) {
         _mint(to, amount);
+    }
+
+    function burn(uint256 amount) public onlyRole(BURNER_ROLE) {
+        _burn(_msgSender(), amount);
     }
 }
 
@@ -99,20 +113,22 @@ contract YexFTOFactory is IYexFTOFactory, Ownable {
         string calldata symbol,
         uint256 _amount,
         address poolHandler,
-        uint256 raisingCycle
+        uint256 raisingCycle,
+        address hook
     ) external override returns (address pair) {
-        ERC20Mintable _launchedToken = new ERC20Mintable(name, symbol);
+        address launchedToken = _deployLaunchedToken(name, symbol, hook);
+
         uint256 amount = _amount; // mint _amount launchedToken
-        address launchedToken = address(_launchedToken);
 
         pair = _createPair(
             raisedToken,
             launchedToken,
             provider,
             poolHandler,
-            raisingCycle
+            raisingCycle,
+            hook
         );
-        _launchedToken.mint(pair, amount);
+        ERC20Mintable(launchedToken).mint(pair, amount);
         IYexFTOPair(pair).depositLaunchedToken(provider, amount);
     }
 
@@ -124,12 +140,28 @@ contract YexFTOFactory is IYexFTOFactory, Ownable {
         return raisedTokens;
     }
 
+    function _deployLaunchedToken(
+        string memory name,
+        string memory symbol,
+        address hook
+    ) internal returns (address) {
+        ERC20Mintable _launchedToken = new ERC20Mintable(name, symbol, hook);
+        return address(_launchedToken);
+    }
+
+    function getYexFTOPairInitCodeHash() external pure returns (bytes32) {
+        bytes memory bytecode = type(YexFTOPair).creationCode;
+        bytes32 hash = keccak256(abi.encodePacked(bytecode));
+        return hash;
+    }
+
     function _createPair(
         address raisedToken,
         address launchedToken,
         address launchedTokenProvider,
         address swapHandler,
-        uint256 raisingCycle
+        uint256 raisingCycle,
+        address hook
     ) internal returns (address pair) {
         require(
             raisedToken != launchedToken,
@@ -149,22 +181,30 @@ contract YexFTOFactory is IYexFTOFactory, Ownable {
             getPair[token0][token1] == address(0),
             "YexFTOFactory: PAIR_EXISTS"
         ); // single check is sufficient
+
         bytes memory bytecode = type(YexFTOPair).creationCode;
+
         bytes32 salt = keccak256(abi.encodePacked(token0, token1));
         assembly {
             pair := create2(0, add(bytecode, 32), mload(bytecode), salt)
         }
+
         YexFTOPair(pair).initialize(
             raisedToken,
             launchedToken,
             launchedTokenProvider,
             swapHandler,
-            raisingCycle
+            raisingCycle,
+            hook
         );
         getPair[token0][token1] = pair;
         getPair[token1][token0] = pair; // populate mapping in the reverse direction
         // init new pair
         allPairs.push(pair);
+
+        // set pair in hook
+        IYexFTOHook(hook).setFTOPair(pair);
+
         emit PairCreated(token0, token1, pair, allPairs.length);
 
         _afterCreatePair(pair);

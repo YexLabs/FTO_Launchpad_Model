@@ -3,24 +3,29 @@ pragma solidity ^0.8.16;
 
 import "../libraries/ERC20.sol";
 import "../libraries/Math.sol";
-import "../libraries/Ownable.sol";
-import "../libraries/Console.sol";
 import "../interfaces/IYexFTOPair.sol";
 import "../interfaces/IYexFTOFactory.sol";
 import "../interfaces/IUniswapV2Router02.sol";
 import "../interfaces/IUniswapV2Factory.sol";
 import "../interfaces/IUniswapV2Pair.sol";
+import "../interfaces/IYexFTOHook.sol";
 import "../libraries/TransferHelper.sol";
+import "../libraries/AccessControl.sol";
 
 contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
-
     address public raisedToken; // tokenA is used to subscribe tokenB
     address public launchedToken; // tokenB is the issuer
+    address public hook;
 
     address public launchedTokenProvider;
 
     uint256 public depositedRaisedToken;
     uint256 public depositedLaunchedToken;
+
+    //claim
+    uint256 public providerLPBalance;
+    uint256 public userLPBalance;
+    uint256 public userLPAccBalance;
 
     address public factory;
 
@@ -28,8 +33,7 @@ contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
     uint256 public endTime;
 
     address public otherPool;
-    uint256 public poolLP;
-    uint256 public raisedTokenReserve;
+    address public lpToken;
 
     Status public FTOState = Status.Processing;
 
@@ -69,7 +73,8 @@ contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
         address _launchedToken,
         address _launchedTokenProvider,
         address _otherPool,
-        uint256 raisingCycle
+        uint256 raisingCycle,
+        address _hook
     ) external {
         require(msg.sender == factory, "YexFTOPair: FORBIDDEN"); // sufficient check
         raisedToken = _raisedToken;
@@ -77,6 +82,7 @@ contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
         launchedTokenProvider = _launchedTokenProvider;
         endTime = block.timestamp + raisingCycle;
         otherPool = _otherPool;
+        hook = _hook;
     }
 
     function depositLaunchedToken(
@@ -140,7 +146,8 @@ contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
         );
        
         raisedTokenDeposit[depositer] = 0;
-        IERC20(raisedToken).transfer(depositer, deposit_amount);
+
+        TransferHelper.safeTransfer(raisedToken, depositer, deposit_amount);
 
         emit Refund(depositer, deposit_amount);
     }
@@ -148,58 +155,16 @@ contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
     function withdraw(address withdrawer) external override lock {
         require(FTOState == Status.Failed || FTOState == Status.Paused, "fund rasing not failed.");
         require(launchedTokenProvider == withdrawer, "only provider can withdraw");
+        
         IERC20(launchedToken).transfer(withdrawer, depositedLaunchedToken);
+        
         emit Withdraw(withdrawer, depositedLaunchedToken);
-    }
-
-    function claimLP(address claimer) external lock {
-        require(FTOState == Status.Success, "fund rasing not success.");
-        require(
-            launchedTokenProvider == claimer || raisedTokenDeposit[claimer] != 0,
-            "only launched token provider or raised token depositer can claim."
-        );
-        address poolFactory = IUniswapV2Router02(otherPool).factory();
-        address pair = IUniswapV2Factory(poolFactory).getPair(
-            raisedToken,
-            launchedToken
-        );
-        uint256 lpAmount = _calculateLPAmount(claimer);
-
-        require(lpAmount > claimedLp[claimer], "Exceeded claimable amount");
-
-        TransferHelper.safeTransfer(pair, claimer, lpAmount);
-        claimedLp[claimer] = lpAmount;
-        raisedTokenDeposit[claimer] = 0;
-
-        emit ClaimLP(claimer, lpAmount);
-    }
-    
-    function claimableLP(address claimer) external view returns (uint256) {
-        require(FTOState == Status.Success, "fund rasing not success.");
-        uint256 lpAmount = _calculateLPAmount(claimer);
-        return lpAmount;
-    }
-
-    function _calculateLPAmount(
-        address caller
-    ) internal view returns (uint256 lpAmount) {
-        lpAmount = 0;
-        if (launchedTokenProvider == caller) {
-            lpAmount = poolLP >> 1;
-        }
-        uint256 deposit_amount = raisedTokenDeposit[caller];
-
-        lpAmount =
-            lpAmount +
-            ((deposit_amount * poolLP) >> 1) /
-            raisedTokenReserve;
     }
 
     function _perform() internal {
         if (depositedRaisedToken != 0) {
-            // rasing success
-            // addLiquidity
-            IERC20(raisedToken).approve(otherPool, depositedRaisedToken);
+            TransferHelper.safeApprove(raisedToken, otherPool, depositedRaisedToken);
+
             IERC20(launchedToken).approve(otherPool, depositedLaunchedToken);
             (, , uint liquidity) = IUniswapV2Router02(otherPool).addLiquidity(
                 raisedToken,
@@ -211,19 +176,20 @@ contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
                 address(this),
                 block.timestamp + 10
             );
-            poolLP = liquidity;
+
             address poolFactory = IUniswapV2Router02(otherPool).factory();
             address pair = IUniswapV2Factory(poolFactory).getPair(
                 raisedToken,
                 launchedToken
             );
-            (address token0, ) = raisedToken < launchedToken
-                ? (raisedToken, launchedToken)
-                : (launchedToken, raisedToken);
-            (uint reserve0, uint reserve1, ) = IUniswapV2Pair(pair)
-                .getReserves();
-            raisedTokenReserve = raisedToken == token0 ? reserve0 : reserve1;
+
+            lpToken = pair;
             FTOState = Status.Success;
+
+            //hook part
+            TransferHelper.safeApprove(pair, hook, liquidity);
+            (providerLPBalance, userLPBalance) = IYexFTOHook(hook).afterAddLiquidity(pair, liquidity);
+            userLPAccBalance = userLPBalance;
         } else {
             FTOState = Status.Failed;
         }
@@ -241,9 +207,75 @@ contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
         performData = "";
     }
 
-    function performUpkeep(bytes calldata) external override {
+    function performUpkeep(bytes calldata) external override lock {
         require(block.timestamp > endTime, "fund rasing not finished.");
         _perform();
+    }
+
+    function claimLP(address claimer, uint256 amount) external lock {
+        require(FTOState == Status.Success, "fund rasing not success.");
+        require(
+            _msgSender() == hook || raisedTokenDeposit[claimer] != 0,
+            "only launched token provider or raised token depositer can claim."
+        );
+        
+        uint256 totalLPBalance = IERC20(lpToken).balanceOf(address(this));
+        uint256 _providerLPBalance = providerLPBalance;
+        uint256 _userLPBalance = userLPBalance;
+        uint256 _userLPAccBalance = userLPAccBalance;
+        uint256 _claimed = claimedLp[claimer];
+
+        uint256 deltaBalance = totalLPBalance - (_providerLPBalance + _userLPBalance);
+
+        if (deltaBalance > 0) {
+            deltaBalance = deltaBalance >> 1;
+            _providerLPBalance += deltaBalance;
+            _userLPBalance += deltaBalance;
+            _userLPAccBalance += deltaBalance;
+        }
+
+        uint256 claimable;
+        if (_msgSender() == hook) {
+            claimable = _providerLPBalance;
+        } else {
+            uint256 userShareAmount = (_userLPAccBalance * raisedTokenDeposit[claimer]) / depositedRaisedToken;
+            claimable = userShareAmount - _claimed;
+        }
+
+        require(amount <= claimable, "YexFTOPair: claim amount exceeds claimable amount");
+
+        if (_msgSender() == hook) {
+            _providerLPBalance -= amount;
+        } else {
+            _userLPBalance -= amount;
+            _claimed += amount;
+        }
+
+        providerLPBalance = _providerLPBalance;
+        userLPBalance = _userLPBalance;
+        userLPAccBalance = _userLPAccBalance;
+        claimedLp[claimer] = _claimed;
+
+        TransferHelper.safeTransfer(lpToken, claimer, amount);
+    }
+
+    function claimableAmount(address user) public view returns (uint256) {
+        require(FTOState == Status.Success, "fund rasing not success.");
+
+        uint256 totalLPBalance = IERC20(lpToken).balanceOf(address(this));
+        uint256 deltaBalance = totalLPBalance - (providerLPBalance + userLPBalance);
+
+        deltaBalance = deltaBalance >> 1;
+
+        if (user == launchedTokenProvider) {
+            return providerLPBalance + deltaBalance;
+        }
+        else {
+            uint256 newUserLPAccBalance = userLPAccBalance + deltaBalance;
+            uint256 userShareAmount = (newUserLPAccBalance * raisedTokenDeposit[user]) / depositedRaisedToken;   
+
+            return userShareAmount - claimedLp[user];
+        }
     }
 
     function pause() external override {
