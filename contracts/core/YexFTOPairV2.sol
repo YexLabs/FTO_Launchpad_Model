@@ -12,8 +12,9 @@ import "../interfaces/IHenloDexFactory.sol";
 import "../interfaces/IHenloDexPair.sol";
 import "../libraries/TransferHelper.sol";
 
-contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
+contract YexFTOPairV2 is IYexFTOPair, ERC20("YexFTOPairV2", "FTOLPV2") {
     uint256 public fee; // default is 5%
+    uint8 public feePercent = 5;
 
     address public raisedToken; // tokenA is used to subscribe tokenB
     address public launchedToken; // tokenB is the issuer
@@ -30,14 +31,16 @@ contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
 
     address public otherPool;
     uint256 public poolLP;
-    uint256 public raisedTokenReserve;
 
     Status public FTOState = Status.Processing;
 
     mapping(address => uint256) public raisedTokenDeposit;
-    mapping(address => uint256) public claimedLp;
+    mapping(address => bool) public claimedLp;
+    mapping(address => bool) public claimedLauncedToken;
 
     address[] public raisedTokenDepositAddress;
+
+    uint256 public launchPercent = 90; // launch percentage
 
     error InvalidAmount();
     error InvalidUpdate();
@@ -60,6 +63,8 @@ contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
         _;
     }
 
+    event ClaimLaunchedToken(address claimer, uint256 amount);
+
     constructor() {
         factory = msg.sender;
     }
@@ -70,7 +75,8 @@ contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
         address _launchedToken,
         address _launchedTokenProvider,
         address _otherPool,
-        uint256 raisingCycle
+        uint256 raisingCycle,
+        bytes calldata data
     ) external {
         require(msg.sender == factory, "YexFTOPair: FORBIDDEN"); // sufficient check
         raisedToken = _raisedToken;
@@ -167,6 +173,9 @@ contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
                 raisedTokenDeposit[claimer] != 0,
             "only launched token provider or raised token depositer can claim."
         );
+        require(claimedLp[claimer] == false, "claimer have claimed.");
+
+        claimedLp[claimer] = true;
         address poolFactory = IHenloDexRouterV1(otherPool).factory();
         address pair = IHenloDexFactory(poolFactory).getPair(
             raisedToken,
@@ -174,11 +183,9 @@ contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
         );
         uint256 lpAmount = _calculateLPAmount(claimer);
 
-        require(lpAmount > claimedLp[claimer], "Exceeded claimable amount");
+        require(lpAmount > 0, "Lp amount is too small.");
 
         TransferHelper.safeTransfer(pair, claimer, lpAmount);
-        claimedLp[claimer] = lpAmount;
-        raisedTokenDeposit[claimer] = 0;
 
         emit ClaimLP(claimer, lpAmount);
     }
@@ -192,6 +199,9 @@ contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
     function _calculateLPAmount(
         address caller
     ) internal view returns (uint256 lpAmount) {
+        if (claimedLp[caller] == true) {
+            return 0;
+        }
         lpAmount = 0;
         if (launchedTokenProvider == caller) {
             lpAmount = poolLP >> 1;
@@ -201,38 +211,72 @@ contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
         lpAmount =
             lpAmount +
             ((deposit_amount * poolLP) >> 1) /
-            raisedTokenReserve;
+            depositedRaisedToken;
+    }
+
+    function claimLaunchedToken(address claimer) external lock {
+        require(FTOState == Status.Success, "fund rasing not success.");
+        require(
+            raisedTokenDeposit[claimer] != 0,
+            "only raised token depositer can claim."
+        );
+        require(claimedLauncedToken[claimer] == false, "claimer have claimed.");
+
+        claimedLauncedToken[claimer] = true;
+
+        uint256 amount = _calculateLaunchedTokenAmount(claimer);
+
+        require(amount > 0, "claim amount is too small.");
+
+        TransferHelper.safeTransfer(launchedToken, claimer, amount);
+
+        emit ClaimLaunchedToken(claimer, amount);
+    }
+
+    function claimableLaunchedToken(
+        address claimer
+    ) external view returns (uint256) {
+        require(FTOState == Status.Success, "fund rasing not success.");
+        uint256 amount = _calculateLaunchedTokenAmount(claimer);
+        return amount;
+    }
+
+    function _calculateLaunchedTokenAmount(
+        address caller
+    ) internal view returns (uint256 amount) {
+        if (claimedLauncedToken[caller] == true) {
+            return 0;
+        }
+        amount = 0;
+        uint256 deposit_amount = raisedTokenDeposit[caller];
+        uint256 poolLauncedTokenAmount = IERC20(launchedToken).balanceOf(
+            address(this)
+        );
+        amount =
+            (deposit_amount * poolLauncedTokenAmount) /
+            depositedRaisedToken;
     }
 
     function _perform() internal {
         if (depositedRaisedToken != 0) {
             // rasing success
             // addLiquidity
+            uint256 launchAmount = (depositedLaunchedToken * launchPercent) /
+                100;
             IERC20(raisedToken).approve(otherPool, depositedRaisedToken);
-            IERC20(launchedToken).approve(otherPool, depositedLaunchedToken);
+            IERC20(launchedToken).approve(otherPool, launchAmount);
             (, , uint liquidity) = IHenloDexRouterV1(otherPool).addLiquidity(
                 raisedToken,
                 launchedToken,
                 depositedRaisedToken,
-                depositedLaunchedToken,
+                launchAmount,
                 0,
                 0,
                 address(this),
-                block.timestamp + 10
+                block.timestamp + 100
             );
-            poolLP = (liquidity * 95) / 100; // fee percent is 5%
+            poolLP = (liquidity * (100 - feePercent)) / 100; // fee percent is 5%
             fee = liquidity - poolLP;
-            address poolFactory = IHenloDexRouterV1(otherPool).factory();
-            address pair = IHenloDexFactory(poolFactory).getPair(
-                raisedToken,
-                launchedToken
-            );
-            (address token0, ) = raisedToken < launchedToken
-                ? (raisedToken, launchedToken)
-                : (launchedToken, raisedToken);
-            (uint reserve0, uint reserve1, ) = IHenloDexPair(pair)
-                .getReserves();
-            raisedTokenReserve = raisedToken == token0 ? reserve0 : reserve1;
             FTOState = Status.Success;
         } else {
             FTOState = Status.Failed;
@@ -277,6 +321,10 @@ contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
 
     function withdrawFee(address feeTo) external override {
         require(msg.sender == factory, "only factory can withdraw");
+        require(
+            FTOState == Status.Success || FTOState == Status.Failed,
+            "only withdrawFee when FTOState is successful or failed"
+        );
         require(fee > 0, "amount to withdraw must be positive");
 
         address poolFactory = IHenloDexRouterV1(otherPool).factory();
