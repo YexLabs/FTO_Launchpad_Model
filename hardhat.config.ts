@@ -63,6 +63,11 @@ const config: HardhatUserConfig = {
       accounts:
         process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
     },
+    berachainBrtio: {
+      url: "https://bartio.rpc.berachain.com",
+      accounts:
+        process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
+    },
   },
   etherscan: {
     apiKey: {
@@ -86,6 +91,7 @@ const config: HardhatUserConfig = {
           ? process.env.GOERLISCAN_API_KEY
           : "",
       berachainArtio: "XXX",
+      berachainBrtio: "XXX",
     },
     customChains: [
       {
@@ -159,6 +165,15 @@ const config: HardhatUserConfig = {
           apiURL:
             "https://api.routescan.io/v2/network/testnet/evm/80085/etherscan/api",
           browserURL: "https://artio.beratrail.io/",
+        },
+      },
+      {
+        network: "berachainBrtio",
+        chainId: 80084,
+        urls: {
+          apiURL:
+            "https://api.routescan.io/v2/network/testnet/evm/80084/etherscan/api",
+          browserURL: "https://bartio.beratrail.io/",
         },
       },
     ],

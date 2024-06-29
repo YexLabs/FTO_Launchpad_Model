@@ -2,7 +2,7 @@ import * as hre from "hardhat";
 
 export async function verify(
   contractAddress: string,
-  // contractFile:any,
+  // contractFile: any,
   args: any[]
 ) {
   console.log("Verifying contract...");

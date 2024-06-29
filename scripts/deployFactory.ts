@@ -9,13 +9,13 @@ async function main() {
 }
 
 async function deployFactory(feeWalletAddy: any) {
-  const factory = await hre.ethers.getContractFactory("UniswapV2Factory");
+  const factory = await hre.ethers.getContractFactory("HenloDexFactory");
   const factoryContract = await factory.deploy(feeWalletAddy);
 
   console.log(factoryContract.address);
   await factoryContract.deployed();
   console.log(
-    `UniswapV2Factory contract deployed to ${factoryContract.address}`
+    `HenloDexFactory contract deployed to ${factoryContract.address}`
   );
 
   console.log("Waiting for blocks confirmations...");

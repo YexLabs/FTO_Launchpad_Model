@@ -2,7 +2,7 @@
 
 pragma solidity =0.8.16;
 
-import "../interfaces/IUniswapV2Pair.sol";
+import "../interfaces/IHenloDexPair.sol";
 
 import "./SafeMathUniswap.sol";
 
@@ -42,7 +42,7 @@ library YexFTOLibrary {
                             hex"ff",
                             factory,
                             keccak256(abi.encodePacked(token0, token1)),
-                            hex"31b05e2391e5fd302184fcf5dfd94e6d551c455c6cc5cc7290b371cfe0e01b9f" // init code hash
+                            hex"1698b87b9032c630f77ba20d60dd620bd1cf622347b2add4a96ea4322908c425" // init code hash
                         )
                     )
                 )

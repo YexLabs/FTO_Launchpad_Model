@@ -7,9 +7,9 @@ import "../libraries/Ownable.sol";
 import "../libraries/Console.sol";
 import "../interfaces/IYexFTOPair.sol";
 import "../interfaces/IYexFTOFactory.sol";
-import "../interfaces/IUniswapV2Router02.sol";
-import "../interfaces/IUniswapV2Factory.sol";
-import "../interfaces/IUniswapV2Pair.sol";
+import "../interfaces/IHenloDexRouterV1.sol";
+import "../interfaces/IHenloDexFactory.sol";
+import "../interfaces/IHenloDexPair.sol";
 import "../libraries/TransferHelper.sol";
 
 contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
@@ -167,8 +167,8 @@ contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
                 raisedTokenDeposit[claimer] != 0,
             "only launched token provider or raised token depositer can claim."
         );
-        address poolFactory = IUniswapV2Router02(otherPool).factory();
-        address pair = IUniswapV2Factory(poolFactory).getPair(
+        address poolFactory = IHenloDexRouterV1(otherPool).factory();
+        address pair = IHenloDexFactory(poolFactory).getPair(
             raisedToken,
             launchedToken
         );
@@ -210,7 +210,7 @@ contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
             // addLiquidity
             IERC20(raisedToken).approve(otherPool, depositedRaisedToken);
             IERC20(launchedToken).approve(otherPool, depositedLaunchedToken);
-            (, , uint liquidity) = IUniswapV2Router02(otherPool).addLiquidity(
+            (, , uint liquidity) = IHenloDexRouterV1(otherPool).addLiquidity(
                 raisedToken,
                 launchedToken,
                 depositedRaisedToken,
@@ -222,15 +222,15 @@ contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
             );
             poolLP = (liquidity * 95) / 100;
             fee = liquidity - poolLP;
-            address poolFactory = IUniswapV2Router02(otherPool).factory();
-            address pair = IUniswapV2Factory(poolFactory).getPair(
+            address poolFactory = IHenloDexRouterV1(otherPool).factory();
+            address pair = IHenloDexFactory(poolFactory).getPair(
                 raisedToken,
                 launchedToken
             );
             (address token0, ) = raisedToken < launchedToken
                 ? (raisedToken, launchedToken)
                 : (launchedToken, raisedToken);
-            (uint reserve0, uint reserve1, ) = IUniswapV2Pair(pair)
+            (uint reserve0, uint reserve1, ) = IHenloDexPair(pair)
                 .getReserves();
             raisedTokenReserve = raisedToken == token0 ? reserve0 : reserve1;
             FTOState = Status.Success;
@@ -279,8 +279,8 @@ contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
         require(msg.sender == factory, "only factory can withdraw");
         require(fee > 0, "amount to withdraw must be positive");
 
-        address poolFactory = IUniswapV2Router02(otherPool).factory();
-        address pair = IUniswapV2Factory(poolFactory).getPair(
+        address poolFactory = IHenloDexRouterV1(otherPool).factory();
+        address pair = IHenloDexFactory(poolFactory).getPair(
             raisedToken,
             launchedToken
         );

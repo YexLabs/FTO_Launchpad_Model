@@ -4,11 +4,11 @@ pragma solidity =0.8.16;
 
 import "../libraries/SafeMathUniswap.sol";
 
-contract UniswapV2ERC20 {
+contract HenloDexERC20 {
     using SafeMathUniswap for uint;
 
-    string public constant name = "XDEX LP";
-    string public constant symbol = "XLP";
+    string public constant name = "Honeypot Finance";
+    string public constant symbol = "HPOT";
     uint8 public constant decimals = 18;
     uint public totalSupply;
     mapping(address => uint) public balanceOf;
@@ -97,7 +97,7 @@ contract UniswapV2ERC20 {
         bytes32 r,
         bytes32 s
     ) external {
-        require(deadline >= block.timestamp, "UniswapV2: EXPIRED");
+        require(deadline >= block.timestamp, "HenloDex: EXPIRED");
         bytes32 digest = keccak256(
             abi.encodePacked(
                 "\x19\x01",
@@ -117,7 +117,7 @@ contract UniswapV2ERC20 {
         address recoveredAddress = ecrecover(digest, v, r, s);
         require(
             recoveredAddress != address(0) && recoveredAddress == owner,
-            "UniswapV2: INVALID_SIGNATURE"
+            "HenloDex: INVALID_SIGNATURE"
         );
         _approve(owner, spender, value);
     }
