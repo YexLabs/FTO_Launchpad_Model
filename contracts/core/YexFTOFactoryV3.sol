@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.16;
 
-import "../interfaces/IYexFTOFactory.sol";
-import "./YexFTOPairV2Vesting.sol";
 import "./WhiteList.sol";
+import "./YexFTOPairV3.sol";
 import "../libraries/Ownable.sol";
 import "../libraries/ERC20.sol";
-import {LinkTokenInterface} from "@chainlink/contracts/src/v0.8/shared/interfaces/LinkTokenInterface.sol";
+import "../interfaces/IYexFTOFactoryV3.sol";
 
 contract ERC20Mintable is ERC20, Ownable {
     constructor(
@@ -19,12 +18,12 @@ contract ERC20Mintable is ERC20, Ownable {
     }
 }
 
-contract YexFTOFactoryV2 is IYexFTOFactory, Ownable, WhiteList {
+contract YexFTOFactoryV3 is IYexFTOFactoryV3, Ownable, WhiteList {
     address[] public allPairs;
     address[] public raisedTokens;
 
     bytes32 public constant INIT_CODE_PAIR_HASH =
-        keccak256(abi.encodePacked(type(YexFTOPairV2Vesting).creationCode));
+        keccak256(abi.encodePacked(type(YexFTOPairV3).creationCode));
 
     mapping(address => address[]) private eventParticipants;
     mapping(address => mapping(address => bool)) private events_map;
@@ -63,8 +62,10 @@ contract YexFTOFactoryV2 is IYexFTOFactory, Ownable, WhiteList {
         string calldata name,
         string calldata symbol,
         uint256 _amount,
+        uint256 launchedTokenPercent,
         address poolHandler,
-        uint256 raisingCycle
+        uint256 raisingCycle,
+        bytes calldata data
     ) external override onlyWhiteList returns (address pair) {
         ERC20Mintable _launchedToken = new ERC20Mintable(name, symbol);
         uint256 amount = _amount; // mint _amount launchedToken
@@ -74,10 +75,14 @@ contract YexFTOFactoryV2 is IYexFTOFactory, Ownable, WhiteList {
             raisedToken,
             launchedToken,
             provider,
+            launchedTokenPercent,
             poolHandler,
-            raisingCycle
+            raisingCycle,
+            data
         );
+
         _launchedToken.mint(pair, amount);
+
         IYexFTOPair(pair).depositLaunchedToken(msg.sender, amount);
     }
 
@@ -93,8 +98,10 @@ contract YexFTOFactoryV2 is IYexFTOFactory, Ownable, WhiteList {
         address raisedToken,
         address launchedToken,
         address launchedTokenProvider,
+        uint256 launchedTokenPercent,
         address swapHandler,
-        uint256 raisingCycle
+        uint256 raisingCycle,
+        bytes calldata data
     ) internal returns (address pair) {
         require(
             raisedToken != launchedToken,
@@ -114,18 +121,19 @@ contract YexFTOFactoryV2 is IYexFTOFactory, Ownable, WhiteList {
             getPair[token0][token1] == address(0),
             "YexFTOFactory: PAIR_EXISTS"
         ); // single check is sufficient
-        bytes memory bytecode = type(YexFTOPairV2Vesting).creationCode;
+        bytes memory bytecode = type(YexFTOPairV3).creationCode;
         bytes32 salt = keccak256(abi.encodePacked(token0, token1));
         assembly {
             pair := create2(0, add(bytecode, 32), mload(bytecode), salt)
         }
-        YexFTOPairV2Vesting(pair).initialize(
+        YexFTOPairV3(pair).initialize(
             raisedToken,
             launchedToken,
             launchedTokenProvider,
+            launchedTokenPercent,
             swapHandler,
             raisingCycle,
-            "0x" // TODO:
+            data
         );
         getPair[token0][token1] = pair;
         getPair[token1][token0] = pair; // populate mapping in the reverse direction
@@ -170,6 +178,7 @@ contract YexFTOFactoryV2 is IYexFTOFactory, Ownable, WhiteList {
         address feeTo
     ) external onlyOwner {
         address pair = getPair[raisedToken][launchedToken];
-        IYexFTOPair(pair).withdrawFee(feeTo);
+        uint256 fee = IERC20(pair).balanceOf(address(this));
+        TransferHelper.safeTransfer(pair, feeTo, fee);
     }
 }
