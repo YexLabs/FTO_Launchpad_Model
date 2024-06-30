@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.16;
-import "../interfaces/IYexFTOHook.sol";
+
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 import "./../libraries/TransferHelper.sol";
+import "./NormalHook.sol";
 
-abstract contract VestingHook is IYexFTOHook {
+abstract contract VestingHook is NormalHook {
     event ERC20Released(address indexed token, uint256 amount);
 
     mapping(address => uint256) private _erc20Released;
@@ -21,7 +22,7 @@ abstract contract VestingHook is IYexFTOHook {
     function execute(
         address ftoPair,
         bytes calldata data
-    ) external virtual override {
+    ) public virtual override {
         require(
             getPair[ftoPair].beneficiaryAddress == address(0),
             "pair have added."
@@ -47,13 +48,8 @@ abstract contract VestingHook is IYexFTOHook {
         address ftoPair,
         address lpToken,
         uint256 lpAmount
-    ) external virtual override {
-        TransferHelper.safeTransferFrom(
-            lpToken,
-            ftoPair,
-            address(this),
-            lpAmount
-        );
+    ) public virtual override {
+        super.afterAddLiquidity(ftoPair, lpToken, lpAmount);
         getPair[ftoPair].lpToken = lpToken;
     }
 

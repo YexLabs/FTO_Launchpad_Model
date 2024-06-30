@@ -14,8 +14,6 @@ interface IYexFTOHook {
         bytes calldata data
     ) external;
 
-    function ftoFactory() external view returns (address);
-
     function claimLP(address ftoPair, address lpToken) external;
 
     function execute(address ftoPair, bytes calldata params) external;

@@ -9,13 +9,12 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 import "../interfaces/IHenloDexPair.sol";
 import "./../libraries/TransferHelper.sol";
 
-contract CustomHook is VestingHook, BurnableHook, NormalHook, AccessControl {
+contract CustomHook is VestingHook, BurnableHook, AccessControl {
     bytes32 public constant FACTORY_ROLE = keccak256("FACTORY_ROLE");
 
-    address public ftoFactory;
     mapping(address => uint256) private _erc20Released;
 
-    constructor(address _ftoFactory) {
+    constructor(address _ftoFactory) NormalHook(_ftoFactory) {
         ftoFactory = _ftoFactory;
         _setupRole(DEFAULT_ADMIN_ROLE, _msgSender());
         _setupRole(FACTORY_ROLE, _ftoFactory);
@@ -24,19 +23,15 @@ contract CustomHook is VestingHook, BurnableHook, NormalHook, AccessControl {
     function execute(
         address ftoPair,
         bytes calldata data
-    ) external override(IYexFTOHook, VestingHook) onlyRole(FACTORY_ROLE) {
-        VestingHook(address(this)).execute(ftoPair, data);
+    ) public override(VestingHook, IYexFTOHook) onlyRole(FACTORY_ROLE) {
+        VestingHook.execute(ftoPair, data);
     }
 
     function afterAddLiquidity(
         address ftoPair,
         address lpToken,
         uint256 lpAmount
-    ) external override(IYexFTOHook, VestingHook) onlyRole(FACTORY_ROLE) {
-        VestingHook(address(this)).afterAddLiquidity(
-            ftoPair,
-            lpToken,
-            lpAmount
-        );
+    ) public override(VestingHook, NormalHook) onlyRole(FACTORY_ROLE) {
+        VestingHook.afterAddLiquidity(ftoPair, lpToken, lpAmount);
     }
 }

@@ -161,7 +161,6 @@ contract YexFTOPairV3 is IYexFTOPair, ERC20("YexFTOPairV3", "FTOLPV3") {
     function refundRaisedToken(
         address depositer
     ) external override lock whenPaused {
-        require(block.timestamp < endTime, "deposit: raising time is over");
         uint256 deposit_amount = raisedTokenDeposit[depositer];
         require(deposit_amount > 0, "refundable amount is 0");
 
@@ -174,7 +173,7 @@ contract YexFTOPairV3 is IYexFTOPair, ERC20("YexFTOPairV3", "FTOLPV3") {
     function withdraw(address withdrawer) external override lock {
         require(
             FTOState == Status.Failed || FTOState == Status.Paused,
-            "fund rasing not failed."
+            "fund rasing have not success."
         );
         require(
             launchedTokenProvider == withdrawer,
@@ -187,8 +186,9 @@ contract YexFTOPairV3 is IYexFTOPair, ERC20("YexFTOPairV3", "FTOLPV3") {
     function claimLP(address claimer) external lock {
         require(FTOState == Status.Success, "fund rasing not success.");
         require(
-            launchedTokenProvider == claimer ||
-                raisedTokenDeposit[claimer] != 0,
+            msg.sender == claimer &&
+                (launchedTokenProvider == claimer ||
+                    raisedTokenDeposit[claimer] != 0),
             "only launched token provider or raised token depositer can claim."
         );
 

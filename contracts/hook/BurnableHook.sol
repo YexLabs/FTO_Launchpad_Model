@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.16;
-import "../interfaces/IYexFTOHook.sol";
 import "../interfaces/IYexFTOPair.sol";
 import "../interfaces/IHenloDexPair.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 import "./../libraries/TransferHelper.sol";
+import "./NormalHook.sol";
 
-abstract contract BurnableHook is IYexFTOHook {
+abstract contract BurnableHook is NormalHook {
     function claimLP(
         address ftoPair,
         address lpToken
