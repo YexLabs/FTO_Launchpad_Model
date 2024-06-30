@@ -16,9 +16,9 @@ import "../interfaces/IYexFTOHook.sol";
 contract YexFTOPairV3 is IYexFTOPair, ERC20("YexFTOPairV3", "FTOLPV3") {
     uint8 public feePercent = 5; // default is 5%
 
-    address public raisedToken; // tokenA is used to subscribe tokenB
+    address public raisedToken; // raisedToken is used to subscribe tokenB
+    address public launchedToken; // launchedToken is the issuer
 
-    address public launchedToken; // tokenB is the issuer
     address public launchedTokenProvider;
     uint256 public launchPercent = 100; // launch percentage defaults to 100
 

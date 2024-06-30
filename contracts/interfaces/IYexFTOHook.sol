@@ -3,6 +3,19 @@
 pragma solidity =0.8.16;
 
 interface IYexFTOHook {
+    function createFTO(
+        address raisedToken,
+        string calldata name,
+        string calldata symbol,
+        uint256 amount,
+        uint256 launchedTokenPercent,
+        address poolHandler,
+        uint256 rasingCycle,
+        bytes calldata data
+    ) external;
+
+    function ftoFactory() external view returns (address);
+
     function claimLP(address ftoPair, address lpToken) external;
 
     function execute(address ftoPair, bytes calldata params) external;

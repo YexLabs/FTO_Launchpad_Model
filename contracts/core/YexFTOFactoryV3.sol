@@ -57,7 +57,6 @@ contract YexFTOFactoryV3 is IYexFTOFactoryV3, Ownable, WhiteList {
     }
 
     function createFTO(
-        address provider,
         address raisedToken,
         string calldata name,
         string calldata symbol,
@@ -74,7 +73,7 @@ contract YexFTOFactoryV3 is IYexFTOFactoryV3, Ownable, WhiteList {
         pair = _createPair(
             raisedToken,
             launchedToken,
-            provider,
+            msg.sender,
             launchedTokenPercent,
             poolHandler,
             raisingCycle,

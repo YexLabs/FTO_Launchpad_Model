@@ -7,7 +7,10 @@ import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 import "./../libraries/TransferHelper.sol";
 
 abstract contract BurnableHook is IYexFTOHook {
-    function claimLP(address ftoPair, address lpToken) external override {
+    function claimLP(
+        address ftoPair,
+        address lpToken
+    ) external virtual override {
         _claimLPAndBurn(ftoPair, lpToken);
     }
 
