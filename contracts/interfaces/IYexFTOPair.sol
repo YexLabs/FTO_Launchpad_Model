@@ -39,4 +39,8 @@ interface IYexFTOPair is AutomationCompatibleInterface {
     function FTOState() external view returns (Status);
 
     function withdrawFee(address feeTo) external;
+
+    function raisedToken() external view returns (address);
+
+    function launchedToken() external view returns (address);
 }

@@ -3,6 +3,8 @@
 pragma solidity =0.8.16;
 
 interface IYexFTOHook {
+    function claimLP(address ftoPair, address lpToken) external;
+
     function execute(address ftoPair, bytes calldata params) external;
 
     function afterAddLiquidity(

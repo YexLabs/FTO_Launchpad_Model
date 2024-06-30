@@ -336,7 +336,6 @@ contract YexFTOPairV3 is IYexFTOPair, ERC20("YexFTOPairV3", "FTOLPV3") {
     }
 
     function pause() external override {
-        require(block.timestamp < endTime, "fund rasing finished.");
         require(msg.sender == factory, "only factory can pause");
         require(FTOState == Status.Processing, "Launchpad is not in progress");
         FTOState = Status.Paused;
@@ -344,7 +343,6 @@ contract YexFTOPairV3 is IYexFTOPair, ERC20("YexFTOPairV3", "FTOLPV3") {
     }
 
     function resume() external override {
-        require(block.timestamp < endTime, "fund rasing finished.");
         require(msg.sender == factory, "only factory can resume");
         require(
             FTOState == Status.Paused,

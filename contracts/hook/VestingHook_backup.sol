@@ -1,12 +1,18 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.16;
 import "../interfaces/IYexFTOHook.sol";
-import "../interfaces/IERC20.sol";
+import "../interfaces/IYexFTOPair.sol";
+import "../interfaces/IHenloDexPair.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
+import "@openzeppelin/contracts/access/AccessControl.sol";
 import "./../libraries/TransferHelper.sol";
 
-abstract contract VestingHook is IYexFTOHook {
+abstract contract VestingHook is IYexFTOHook, AccessControl {
+    bytes32 public constant FACTORY_ROLE = keccak256("FACTORY_ROLE");
+
     event ERC20Released(address indexed token, uint256 amount);
 
+    address public ftoFactory;
     mapping(address => uint256) private _erc20Released;
 
     struct VestingInfo {
@@ -18,7 +24,16 @@ abstract contract VestingHook is IYexFTOHook {
 
     mapping(address => VestingInfo) public getPair;
 
-    function execute(address ftoPair, bytes calldata data) external override {
+    constructor(address _ftoFactory) {
+        ftoFactory = _ftoFactory;
+        _setupRole(DEFAULT_ADMIN_ROLE, _msgSender());
+        _setupRole(FACTORY_ROLE, _ftoFactory);
+    }
+
+    function execute(
+        address ftoPair,
+        bytes calldata data
+    ) external override onlyRole(FACTORY_ROLE) {
         require(
             getPair[ftoPair].beneficiaryAddress == address(0),
             "pair have added."
@@ -52,6 +67,37 @@ abstract contract VestingHook is IYexFTOHook {
             lpAmount
         );
         getPair[ftoPair].lpToken = lpToken;
+    }
+
+    function claimLP(address ftoPair, address lpToken) external override {
+        _claimLPAndBurn(ftoPair, lpToken);
+    }
+
+    // used for claim and burn, do we burn lp or burn launchedToken?
+    function _claimLPAndBurn(address ftoPair, address lpToken) internal {
+        uint256 lpAmount = IYexFTOPair(ftoPair).claimableLP(address(this));
+        require(lpAmount > 0, "claimableLP cannot less than 0");
+        IYexFTOPair(ftoPair).claimLP(address(this));
+
+        TransferHelper.safeTransfer(lpToken, lpToken, lpAmount);
+
+        // remove liquidity
+        (uint amount0, uint amount1) = IHenloDexPair(lpToken).burn(
+            address(this)
+        );
+
+        address raisedToken = IYexFTOPair(ftoPair).raisedToken();
+        address launchedToken = IYexFTOPair(ftoPair).launchedToken();
+
+        (address token0, ) = raisedToken < launchedToken
+            ? (raisedToken, launchedToken)
+            : (launchedToken, raisedToken);
+
+        (, uint256 launchedAmount) = raisedToken == token0
+            ? (amount0, amount1)
+            : (amount1, amount0);
+
+        ERC20Burnable(launchedToken).burn(launchedAmount);
     }
 
     /**
