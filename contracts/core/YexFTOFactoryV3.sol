@@ -18,7 +18,7 @@ contract ERC20Mintable is ERC20, Ownable {
     }
 }
 
-contract YexFTOFactoryV3 is IYexFTOFactoryV3, Ownable, WhiteList {
+contract YexFTOFactoryV3 is IYexFTOFactoryV3, WhiteList {
     address[] public allPairs;
     address[] public raisedTokens;
 
@@ -176,8 +176,14 @@ contract YexFTOFactoryV3 is IYexFTOFactoryV3, Ownable, WhiteList {
         address launchedToken,
         address feeTo
     ) external onlyOwner {
+        require(feeTo != address(0), "YexFTOFactory: INVALID_FEE_TO_ADDRESS");
         address pair = getPair[raisedToken][launchedToken];
-        uint256 fee = IERC20(pair).balanceOf(address(this));
-        TransferHelper.safeTransfer(pair, feeTo, fee);
+        address lpToken = YexFTOPairV3(pair).lpToken();
+        require(lpToken != address(0), "YexFTOFactory: LP_TOKEN_ZERO_ADDRESS");
+
+        uint256 fee = IERC20(lpToken).balanceOf(address(this));
+        if (fee > 0) {
+            TransferHelper.safeTransfer(lpToken, feeTo, fee);
+        }
     }
 }
