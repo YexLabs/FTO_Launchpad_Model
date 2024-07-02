@@ -309,7 +309,7 @@ contract YexFTOPairV3 is IYexFTOPair, ERC20("YexFTOPairV3", "FTOLPV3") {
                 IERC20(pair).approve(hook, (_totalLP * percent4hook) / 100);
                 IYexFTOHook(hook).afterAddLiquidity(
                     address(this),
-                    launchedToken,
+                    pair,
                     (_totalLP * percent4hook) / 100
                 );
             }
