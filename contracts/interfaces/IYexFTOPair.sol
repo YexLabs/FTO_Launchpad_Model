@@ -9,7 +9,8 @@ interface IYexFTOPair is AutomationCompatibleInterface {
         Paused,
         Processing
     }
-    event Deposit(address indexed depositer, uint);
+    event DepositLaunchedToken(address indexed depositer, uint);
+    event DepositRaisedToken(address indexed depositer, uint);
     event Withdraw(address indexed withdrawer, uint);
     event ClaimLP(address indexed claimer, uint);
     event Refund(address indexed depositer, uint);

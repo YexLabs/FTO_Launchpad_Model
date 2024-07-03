@@ -99,7 +99,7 @@ contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
             revert InvalidUpdate();
         }
         depositedLaunchedToken = depositedLaunchedToken + amount;
-        emit Deposit(depositer, amount);
+        emit DepositLaunchedToken(depositer, amount);
     }
 
     function depositRaisedToken(
@@ -131,7 +131,7 @@ contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
         // update participations
         IYexFTOFactory(factory).addEvent(depositer, address(this));
 
-        emit Deposit(depositer, amount);
+        emit DepositRaisedToken(depositer, amount);
     }
 
     function refundRaisedToken(

@@ -1,16 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.16;
 
-import "../libraries/Math.sol";
-import "../libraries/Ownable.sol";
-import "../libraries/Console.sol";
 import "../interfaces/IYexFTOPair.sol";
-import "../interfaces/IYexFTOFactory.sol";
+import "../interfaces/IYexFTOFactoryV3.sol";
 import "../interfaces/IHenloDexRouterV1.sol";
 import "../interfaces/IHenloDexFactory.sol";
 import "../interfaces/IHenloDexPair.sol";
-import "../libraries/TransferHelper.sol";
 import "../interfaces/IYexFTOHook.sol";
+import "../libraries/TransferHelper.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract YexFTOPairV3 is IYexFTOPair {
@@ -123,7 +120,7 @@ contract YexFTOPairV3 is IYexFTOPair {
             revert InvalidUpdate();
         }
         depositedLaunchedToken = depositedLaunchedToken + amount;
-        emit Deposit(depositer, amount);
+        emit DepositLaunchedToken(depositer, amount);
     }
 
     function depositRaisedToken(
@@ -153,9 +150,9 @@ contract YexFTOPairV3 is IYexFTOPair {
         depositedRaisedToken = depositedRaisedToken + amount;
 
         // update participations
-        IYexFTOFactory(factory).addEvent(depositer, address(this));
+        IYexFTOFactoryV3(factory).addEvent(depositer, address(this));
 
-        emit Deposit(depositer, amount);
+        emit DepositRaisedToken(depositer, amount);
     }
 
     function refundRaisedToken(
@@ -173,7 +170,7 @@ contract YexFTOPairV3 is IYexFTOPair {
     function withdraw(address withdrawer) external override lock {
         require(
             FTOState == Status.Failed || FTOState == Status.Paused,
-            "fund rasing have not success."
+            "fund raising has already concluded"
         );
         require(
             launchedTokenProvider == withdrawer,
@@ -318,6 +315,10 @@ contract YexFTOPairV3 is IYexFTOPair {
         }
     }
 
+    function _isUpkeepNeeded() internal view returns (bool) {
+        return block.timestamp > endTime && FTOState == Status.Processing;
+    }
+
     function checkUpkeep(
         bytes calldata /* checkData */
     )
@@ -326,12 +327,12 @@ contract YexFTOPairV3 is IYexFTOPair {
         override
         returns (bool upkeepNeeded, bytes memory performData)
     {
-        upkeepNeeded = block.timestamp > endTime;
+        upkeepNeeded = _isUpkeepNeeded();
         performData = "";
     }
 
     function performUpkeep(bytes calldata) external override {
-        require(block.timestamp > endTime, "fund rasing not finished.");
+        require(_isUpkeepNeeded(), "fund raising not finished or paused");
         _perform();
     }
 
