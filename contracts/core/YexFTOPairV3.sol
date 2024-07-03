@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.16;
 
-import "../libraries/ERC20.sol";
 import "../libraries/Math.sol";
 import "../libraries/Ownable.sol";
 import "../libraries/Console.sol";
@@ -12,8 +11,9 @@ import "../interfaces/IHenloDexFactory.sol";
 import "../interfaces/IHenloDexPair.sol";
 import "../libraries/TransferHelper.sol";
 import "../interfaces/IYexFTOHook.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-contract YexFTOPairV3 is IYexFTOPair, ERC20("YexFTOPairV3", "FTOLPV3") {
+contract YexFTOPairV3 is IYexFTOPair {
     uint8 public feePercent = 5; // default is 5%
 
     address public raisedToken; // raisedToken is used to subscribe tokenB
@@ -41,7 +41,7 @@ contract YexFTOPairV3 is IYexFTOPair, ERC20("YexFTOPairV3", "FTOLPV3") {
 
     mapping(address => uint256) public raisedTokenDeposit;
     mapping(address => uint256) public claimedLp;
-    mapping(address => bool) public claimedLauncedToken;
+    mapping(address => bool) public claimedLaunchedToken;
 
     address[] public raisedTokenDepositAddress;
 
@@ -235,9 +235,9 @@ contract YexFTOPairV3 is IYexFTOPair, ERC20("YexFTOPairV3", "FTOLPV3") {
             raisedTokenDeposit[claimer] != 0,
             "only raised token depositer can claim."
         );
-        require(claimedLauncedToken[claimer] == false, "claimer have claimed.");
+        require(claimedLaunchedToken[claimer] == false, "claimer have claimed.");
 
-        claimedLauncedToken[claimer] = true;
+        claimedLaunchedToken[claimer] = true;
 
         uint256 amount = _calculateLaunchedTokenAmount(claimer);
 
@@ -259,7 +259,7 @@ contract YexFTOPairV3 is IYexFTOPair, ERC20("YexFTOPairV3", "FTOLPV3") {
     function _calculateLaunchedTokenAmount(
         address caller
     ) internal view returns (uint256 amount) {
-        if (claimedLauncedToken[caller] == true) {
+        if (claimedLaunchedToken[caller] == true) {
             return 0;
         }
         amount = 0;
