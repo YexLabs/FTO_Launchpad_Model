@@ -2,8 +2,8 @@
 pragma solidity ^0.8.16;
 import "../interfaces/IYexFTOPair.sol";
 import "../interfaces/IHenloDexPair.sol";
-import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 import "./../libraries/TransferHelper.sol";
+import "./../core/YexFTOLaunchToken.sol";
 import "./NormalHook.sol";
 
 abstract contract BurnableHook is NormalHook {
@@ -38,6 +38,6 @@ abstract contract BurnableHook is NormalHook {
             ? (amount0, amount1)
             : (amount1, amount0);
 
-        ERC20Burnable(launchedToken).burn(launchedAmount);
+        YexFTOLaunchToken(launchedToken).burn(launchedAmount);
     }
 }

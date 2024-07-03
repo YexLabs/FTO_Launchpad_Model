@@ -3,20 +3,9 @@ pragma solidity ^0.8.16;
 
 import "./WhiteList.sol";
 import "./YexFTOPairV3.sol";
+import "./YexFTOLaunchToken.sol";
 import "../libraries/Ownable.sol";
-import "../libraries/ERC20.sol";
 import "../interfaces/IYexFTOFactoryV3.sol";
-
-contract ERC20Mintable is ERC20, Ownable {
-    constructor(
-        string memory name_,
-        string memory symbol_
-    ) ERC20(name_, symbol_) {}
-
-    function mint(address to, uint256 amount) public onlyOwner {
-        _mint(to, amount);
-    }
-}
 
 contract YexFTOFactoryV3 is IYexFTOFactoryV3, WhiteList {
     address[] public allPairs;
@@ -66,7 +55,7 @@ contract YexFTOFactoryV3 is IYexFTOFactoryV3, WhiteList {
         uint256 raisingCycle,
         bytes calldata data
     ) external override onlyWhiteList returns (address pair) {
-        ERC20Mintable _launchedToken = new ERC20Mintable(name, symbol);
+        YexFTOLaunchToken _launchedToken = new YexFTOLaunchToken(name, symbol, msg.sender);
         uint256 amount = _amount; // mint _amount launchedToken
         address launchedToken = address(_launchedToken);
 
