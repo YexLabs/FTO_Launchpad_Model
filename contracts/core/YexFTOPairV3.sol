@@ -66,8 +66,6 @@ contract YexFTOPairV3 is IYexFTOPair {
         _;
     }
 
-    event ClaimLaunchedToken(address claimer, uint256 amount);
-
     constructor() {
         factory = msg.sender;
     }
@@ -183,25 +181,26 @@ contract YexFTOPairV3 is IYexFTOPair {
     function claimLP(address claimer) external lock {
         require(FTOState == Status.Success, "fund rasing not success.");
         require(
-            msg.sender == claimer &&
-                (launchedTokenProvider == claimer ||
-                    raisedTokenDeposit[claimer] != 0),
+            msg.sender == launchedTokenProvider || raisedTokenDeposit[claimer] != 0,
             "only launched token provider or raised token depositer can claim."
         );
 
         uint256 lpAmount = _calculateLPAmount(claimer);
-        require(lpAmount - claimedLp[claimer] > 0, "Lp amount is too small.");
-        claimedLp[claimer] += lpAmount;
+        uint256 claimedAmount = claimedLp[claimer];
+        require(lpAmount > claimedAmount, "LP amount is too small.");
 
-        if (claimer == launchedTokenProvider) {
-            providerClaimedLp += lpAmount;
+        uint256 claimableAmount = lpAmount - claimedAmount;
+        claimedLp[claimer] = lpAmount;
+
+        if (msg.sender == launchedTokenProvider) {
+            providerClaimedLp += claimableAmount;
         } else {
-            userClaimedLp += lpAmount;
+            userClaimedLp += claimableAmount;
         }
 
-        TransferHelper.safeTransfer(lpToken, claimer, lpAmount);
+        TransferHelper.safeTransfer(lpToken, claimer, claimableAmount);
 
-        emit ClaimLP(claimer, lpAmount);
+        emit ClaimLP(claimer, claimableAmount);
     }
 
     function claimableLP(address claimer) external view returns (uint256) {
@@ -213,17 +212,16 @@ contract YexFTOPairV3 is IYexFTOPair {
     function _calculateLPAmount(
         address caller
     ) internal view returns (uint256 lpAmount) {
-        lpAmount = 0;
-        uint256 deltaLp = IERC20(lpToken).balanceOf(address(this)) +
+        uint256 cumulativeLP = IERC20(lpToken).balanceOf(address(this)) +
             (providerClaimedLp + userClaimedLp);
 
-        if (launchedTokenProvider == caller) {
-            lpAmount = deltaLp >> 1;
-        }
+        lpAmount = cumulativeLP >> 1;
 
-        lpAmount +=
-            ((raisedTokenDeposit[caller] * deltaLp) >> 1) /
+        if (launchedTokenProvider != caller) {
+            lpAmount =
+            (raisedTokenDeposit[caller] * lpAmount) /
             depositedRaisedToken;
+        }
     }
 
     function claimLaunchedToken(address claimer) external lock {
@@ -232,7 +230,7 @@ contract YexFTOPairV3 is IYexFTOPair {
             raisedTokenDeposit[claimer] != 0,
             "only raised token depositer can claim."
         );
-        require(claimedLaunchedToken[claimer] == false, "claimer have claimed.");
+        require(!claimedLaunchedToken[claimer], "claimer has claimed.");
 
         claimedLaunchedToken[claimer] = true;
 
@@ -256,16 +254,16 @@ contract YexFTOPairV3 is IYexFTOPair {
     function _calculateLaunchedTokenAmount(
         address caller
     ) internal view returns (uint256 amount) {
-        if (claimedLaunchedToken[caller] == true) {
+        if (claimedLaunchedToken[caller]) {
             return 0;
         }
-        amount = 0;
+        
         uint256 deposit_amount = raisedTokenDeposit[caller];
-        uint256 poolLauncedTokenAmount = IERC20(launchedToken).balanceOf(
+        uint256 poolLaunchedTokenAmount = IERC20(launchedToken).balanceOf(
             address(this)
         );
         amount =
-            (deposit_amount * poolLauncedTokenAmount) /
+            (deposit_amount * poolLaunchedTokenAmount) /
             depositedRaisedToken;
     }
 
@@ -303,11 +301,12 @@ contract YexFTOPairV3 is IYexFTOPair {
 
             // hook part
             if (hook != address(0)) {
-                IERC20(pair).approve(hook, (_totalLP * percent4hook) / 100);
+                uint256 vestAmount = (_totalLP * percent4hook) / 100;
+                IERC20(pair).approve(hook, vestAmount);
                 IYexFTOHook(hook).afterAddLiquidity(
                     address(this),
                     pair,
-                    (_totalLP * percent4hook) / 100
+                    vestAmount
                 );
             }
         } else {

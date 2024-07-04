@@ -63,8 +63,6 @@ contract YexFTOPairV2 is IYexFTOPair, ERC20("YexFTOPairV2", "FTOLPV2") {
         _;
     }
 
-    event ClaimLaunchedToken(address claimer, uint256 amount);
-
     constructor() {
         factory = msg.sender;
     }

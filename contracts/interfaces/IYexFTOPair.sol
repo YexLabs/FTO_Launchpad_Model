@@ -16,6 +16,7 @@ interface IYexFTOPair is AutomationCompatibleInterface {
     event Refund(address indexed depositer, uint);
     event Paused(uint timestamp);
     event Resumed(uint timestamp);
+    event ClaimLaunchedToken(address claimer, uint256 amount);
 
     function depositRaisedToken(address depositer, uint256 amount) external;
 
