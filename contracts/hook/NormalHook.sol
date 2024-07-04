@@ -20,7 +20,7 @@ contract NormalHook is IYexFTOHook {
         uint256 amount,
         uint256 launchedTokenPercent,
         address poolHandler,
-        uint256 rasingCycle,
+        uint256 raisingCycle,
         bytes calldata data
     ) public virtual {
         IYexFTOFactoryV3(ftoFactory).createFTO(
@@ -30,7 +30,7 @@ contract NormalHook is IYexFTOHook {
             amount,
             launchedTokenPercent,
             poolHandler,
-            rasingCycle,
+            raisingCycle,
             data
         );
     }

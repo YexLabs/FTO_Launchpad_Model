@@ -8,6 +8,7 @@ import "./NormalHook.sol";
 abstract contract VestingHook is NormalHook {
     event ERC20Released(address indexed token, uint256 amount);
 
+    uint256 public lock;
     mapping(address => uint256) private _erc20Released;
 
     struct VestingInfo {
@@ -16,13 +17,42 @@ abstract contract VestingHook is NormalHook {
         uint64 durationSeconds;
         address lpToken;
     }
-
     mapping(address => VestingInfo) public getPair;
+
+    modifier onlyWhenLocked() {
+        require(lock == 1, "Not locked");
+        _;
+    }
+
+    modifier lockFunction() {
+        lock = 1;
+        _;
+        lock = 0;
+    }
+
+    modifier onlyFTOPair() {
+        require(getPair[msg.sender].beneficiaryAddress != address(0),
+        "FTOPair not added or not authorized");
+        _;
+    }
+
+    function createFTO(
+        address raisedToken,
+        string calldata name,
+        string calldata symbol,
+        uint256 amount,
+        uint256 launchedTokenPercent,
+        address poolHandler,
+        uint256 raisingCycle,
+        bytes calldata data
+    ) public virtual override lockFunction {
+        super.createFTO(raisedToken, name, symbol, amount, launchedTokenPercent, poolHandler, raisingCycle, data);
+    }
 
     function execute(
         address ftoPair,
         bytes calldata data
-    ) public virtual override {
+    ) public virtual override onlyWhenLocked {
         require(
             getPair[ftoPair].beneficiaryAddress == address(0),
             "pair have added."
@@ -48,7 +78,7 @@ abstract contract VestingHook is NormalHook {
         address ftoPair,
         address lpToken,
         uint256 lpAmount
-    ) public virtual override {
+    ) public virtual override onlyFTOPair {
         super.afterAddLiquidity(ftoPair, lpToken, lpAmount);
         getPair[ftoPair].lpToken = lpToken;
     }
