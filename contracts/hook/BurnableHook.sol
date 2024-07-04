@@ -10,7 +10,7 @@ abstract contract BurnableHook is NormalHook {
     function claimLP(
         address ftoPair,
         address lpToken
-    ) external virtual override {
+    ) public virtual override {
         _claimLPAndBurn(ftoPair, lpToken);
     }
 

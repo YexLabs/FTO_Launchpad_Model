@@ -4,8 +4,10 @@ import "../interfaces/IYexFTOHook.sol";
 import "../interfaces/IYexFTOFactoryV3.sol";
 import "./../libraries/TransferHelper.sol";
 
-abstract contract NormalHook is IYexFTOHook {
-    address public ftoFactory;
+contract NormalHook is IYexFTOHook {
+    error NotImplemented();
+
+    address public immutable ftoFactory;
 
     constructor(address _ftoFactory) {
         ftoFactory = _ftoFactory;
@@ -31,6 +33,15 @@ abstract contract NormalHook is IYexFTOHook {
             rasingCycle,
             data
         );
+    }
+
+
+    function claimLP(address /*ftoPair*/, address /*lpToken*/) external virtual {
+        revert NotImplemented();
+    }
+
+    function execute(address /*ftoPair*/, bytes calldata /*params*/) external virtual {
+        revert NotImplemented();
     }
 
     function afterAddLiquidity(
