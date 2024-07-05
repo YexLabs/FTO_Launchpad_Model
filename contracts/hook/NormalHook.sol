@@ -40,7 +40,7 @@ contract NormalHook is IYexFTOHook {
         revert NotImplemented();
     }
 
-    function execute(address /*ftoPair*/, bytes calldata /*params*/) external virtual {
+    function execute(bytes calldata /*params*/) external virtual {
         revert NotImplemented();
     }
 

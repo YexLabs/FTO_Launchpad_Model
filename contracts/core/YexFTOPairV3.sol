@@ -22,7 +22,7 @@ contract YexFTOPairV3 is IYexFTOPair {
     uint256 public depositedRaisedToken;
     uint256 public depositedLaunchedToken;
 
-    address public factory;
+    address public immutable factory;
 
     uint256 public startTime = block.timestamp;
     uint256 public endTime;
@@ -95,7 +95,7 @@ contract YexFTOPairV3 is IYexFTOPair {
             hook = _launchedTokenProvider;
             percent4hook = _hookPercent;
 
-            IYexFTOHook(hook).execute(address(this), _hookParams);
+            IYexFTOHook(hook).execute(_hookParams);
         }
     }
 

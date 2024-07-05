@@ -50,11 +50,10 @@ abstract contract VestingHook is NormalHook {
     }
 
     function execute(
-        address ftoPair,
         bytes calldata data
     ) public virtual override onlyWhenLocked {
         require(
-            getPair[ftoPair].beneficiaryAddress == address(0),
+            getPair[msg.sender].beneficiaryAddress == address(0),
             "pair have added."
         );
 
@@ -66,7 +65,7 @@ abstract contract VestingHook is NormalHook {
 
         require(startTimestamp > 0, "vesting time cannot less than 0");
 
-        getPair[ftoPair] = VestingInfo(
+        getPair[msg.sender] = VestingInfo(
             beneficiaryAddress,
             startTimestamp,
             durationSeconds,

@@ -39,10 +39,9 @@ contract CustomHook is VestingHook, BurnableHook {
     }
 
     function execute(
-        address ftoPair,
         bytes calldata data
     ) public override(VestingHook, NormalHook) {
-        VestingHook.execute(ftoPair, data);
+        VestingHook.execute(data);
     }
 
     function claimLP(

@@ -16,7 +16,7 @@ interface IYexFTOHook {
 
     function claimLP(address ftoPair, address lpToken) external;
 
-    function execute(address ftoPair, bytes calldata params) external;
+    function execute(bytes calldata params) external;
 
     function afterAddLiquidity(
         address ftoPair,
