@@ -95,8 +95,14 @@ contract HenloDexPair is HenloDexERC20 {
             IERC20(_token1).name(),
             " HLP"
         );
+        string memory _symbol = string.concat(
+            IERC20(_token0).symbol(),
+            "_",
+            IERC20(_token1).symbol(),
+            " HLP"
+        );
         name = _name;
-        symbol = _name;
+        symbol = _symbol;
     }
 
     // update reserves and, on the first call per block, price accumulators
