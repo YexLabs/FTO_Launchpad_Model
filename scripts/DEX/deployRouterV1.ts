@@ -1,16 +1,16 @@
 import * as dotenv from "dotenv";
 import * as hre from "hardhat";
-import { verify } from "./verify-contract";
+import { verify } from "../verify-contract";
 dotenv.config();
 
 async function main() {
-  await deployRouter02(
+  await deployRouterV1(
     "0x2f795195bae7E61E848ffC87ba7f6ae1A06c0527",
     "0x7507c1dc16935B82698e4C63f2746A2fCf994dF8"
   );
 }
 
-async function deployRouter02(factoryContractAddy: any, WETHAddy: any) {
+async function deployRouterV1(factoryContractAddy: any, WETHAddy: any) {
   const router02 = await hre.ethers.getContractFactory("HenloDexRouterV1");
   const router02Contract = await router02.deploy(factoryContractAddy, WETHAddy);
 
@@ -23,7 +23,11 @@ async function deployRouter02(factoryContractAddy: any, WETHAddy: any) {
   await router02Contract.deployTransaction.wait(6);
   console.log("Confirmed!");
 
-  await verify(router02Contract.address, [factoryContractAddy, WETHAddy]);
+  await verify(
+    router02Contract.address,
+    "contracts/core/HenloDexRouterV1.sol:HenloDexRouterV1",
+    [factoryContractAddy, WETHAddy]
+  );
 }
 
 main().catch((error) => {

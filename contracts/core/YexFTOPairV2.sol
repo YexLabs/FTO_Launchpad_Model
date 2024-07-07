@@ -1,46 +1,49 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.16;
 
-import "../libraries/ERC20.sol";
-import "../libraries/Math.sol";
-import "../libraries/Ownable.sol";
-import "../libraries/Console.sol";
 import "../interfaces/IYexFTOPair.sol";
-import "../interfaces/IYexFTOFactory.sol";
+import "../interfaces/IYexFTOFactoryV2.sol";
 import "../interfaces/IHenloDexRouterV1.sol";
 import "../interfaces/IHenloDexFactory.sol";
 import "../interfaces/IHenloDexPair.sol";
+import "../interfaces/IYexFTOHook.sol";
 import "../libraries/TransferHelper.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-contract YexFTOPairV2 is IYexFTOPair, ERC20("YexFTOPairV2", "FTOLPV2") {
-    uint256 public fee; // default is 5%
-    uint8 public feePercent = 5;
+contract YexFTOPairV2 is IYexFTOPair {
+    uint8 public feePercent = 5; // default is 5%
 
-    address public raisedToken; // tokenA is used to subscribe tokenB
-    address public launchedToken; // tokenB is the issuer
+    address public raisedToken; // raisedToken is used to subscribe tokenB
+    address public launchedToken; // launchedToken is the issuer
 
     address public launchedTokenProvider;
+    uint256 public launchPercent = 100; // launch percentage defaults to 100
 
     uint256 public depositedRaisedToken;
     uint256 public depositedLaunchedToken;
 
-    address public factory;
+    address public immutable factory;
 
     uint256 public startTime = block.timestamp;
     uint256 public endTime;
 
     address public otherPool;
-    uint256 public poolLP;
+
+    // lp
+    address public lpToken;
+    uint256 public providerClaimedLp;
+    uint256 public userClaimedLp;
 
     Status public FTOState = Status.Processing;
 
     mapping(address => uint256) public raisedTokenDeposit;
-    mapping(address => bool) public claimedLp;
-    mapping(address => bool) public claimedLauncedToken;
+    mapping(address => uint256) public claimedLp;
+    mapping(address => bool) public claimedLaunchedToken;
 
     address[] public raisedTokenDepositAddress;
 
-    uint256 public launchPercent = 90; // launch percentage
+    uint256 public percent4hook; // percentage for hook
+    address public hook;
 
     error InvalidAmount();
     error InvalidUpdate();
@@ -72,6 +75,7 @@ contract YexFTOPairV2 is IYexFTOPair, ERC20("YexFTOPairV2", "FTOLPV2") {
         address _raisedToken,
         address _launchedToken,
         address _launchedTokenProvider,
+        uint256 _launchedTokenPercent,
         address _otherPool,
         uint256 raisingCycle,
         bytes calldata data
@@ -80,8 +84,19 @@ contract YexFTOPairV2 is IYexFTOPair, ERC20("YexFTOPairV2", "FTOLPV2") {
         raisedToken = _raisedToken;
         launchedToken = _launchedToken;
         launchedTokenProvider = _launchedTokenProvider;
+        launchPercent = _launchedTokenPercent;
         endTime = block.timestamp + raisingCycle;
         otherPool = _otherPool;
+        if (data.length > 0) {
+            (uint256 _hookPercent, bytes memory _hookParams) = abi.decode(
+                data,
+                (uint256, bytes)
+            );
+            hook = _launchedTokenProvider;
+            percent4hook = _hookPercent;
+
+            IYexFTOHook(hook).execute(_hookParams);
+        }
     }
 
     function depositLaunchedToken(
@@ -133,7 +148,7 @@ contract YexFTOPairV2 is IYexFTOPair, ERC20("YexFTOPairV2", "FTOLPV2") {
         depositedRaisedToken = depositedRaisedToken + amount;
 
         // update participations
-        IYexFTOFactory(factory).addEvent(depositer, address(this));
+        IYexFTOFactoryV2(factory).addEvent(depositer, address(this));
 
         emit DepositRaisedToken(depositer, amount);
     }
@@ -141,7 +156,6 @@ contract YexFTOPairV2 is IYexFTOPair, ERC20("YexFTOPairV2", "FTOLPV2") {
     function refundRaisedToken(
         address depositer
     ) external override lock whenPaused {
-        require(block.timestamp < endTime, "deposit: raising time is over");
         uint256 deposit_amount = raisedTokenDeposit[depositer];
         require(deposit_amount > 0, "refundable amount is 0");
 
@@ -154,7 +168,7 @@ contract YexFTOPairV2 is IYexFTOPair, ERC20("YexFTOPairV2", "FTOLPV2") {
     function withdraw(address withdrawer) external override lock {
         require(
             FTOState == Status.Failed || FTOState == Status.Paused,
-            "fund rasing not failed."
+            "fund raising has already concluded"
         );
         require(
             launchedTokenProvider == withdrawer,
@@ -167,49 +181,48 @@ contract YexFTOPairV2 is IYexFTOPair, ERC20("YexFTOPairV2", "FTOLPV2") {
     function claimLP(address claimer) external lock {
         require(FTOState == Status.Success, "fund rasing not success.");
         require(
-            launchedTokenProvider == claimer ||
+            msg.sender == launchedTokenProvider ||
                 raisedTokenDeposit[claimer] != 0,
             "only launched token provider or raised token depositer can claim."
         );
-        require(claimedLp[claimer] == false, "claimer have claimed.");
 
-        claimedLp[claimer] = true;
-        address poolFactory = IHenloDexRouterV1(otherPool).factory();
-        address pair = IHenloDexFactory(poolFactory).getPair(
-            raisedToken,
-            launchedToken
-        );
         uint256 lpAmount = _calculateLPAmount(claimer);
+        uint256 claimedAmount = claimedLp[claimer];
+        require(lpAmount > claimedAmount, "LP amount is too small.");
 
-        require(lpAmount > 0, "Lp amount is too small.");
+        uint256 claimableAmount = lpAmount - claimedAmount;
+        claimedLp[claimer] = lpAmount;
 
-        TransferHelper.safeTransfer(pair, claimer, lpAmount);
+        if (msg.sender == launchedTokenProvider) {
+            providerClaimedLp += claimableAmount;
+        } else {
+            userClaimedLp += claimableAmount;
+        }
 
-        emit ClaimLP(claimer, lpAmount);
+        TransferHelper.safeTransfer(lpToken, claimer, claimableAmount);
+
+        emit ClaimLP(claimer, claimableAmount);
     }
 
     function claimableLP(address claimer) external view returns (uint256) {
         require(FTOState == Status.Success, "fund rasing not success.");
         uint256 lpAmount = _calculateLPAmount(claimer);
-        return lpAmount;
+        return lpAmount - claimedLp[claimer];
     }
 
     function _calculateLPAmount(
         address caller
     ) internal view returns (uint256 lpAmount) {
-        if (claimedLp[caller] == true) {
-            return 0;
-        }
-        lpAmount = 0;
-        if (launchedTokenProvider == caller) {
-            lpAmount = poolLP >> 1;
-        }
-        uint256 deposit_amount = raisedTokenDeposit[caller];
+        uint256 cumulativeLP = IERC20(lpToken).balanceOf(address(this)) +
+            (providerClaimedLp + userClaimedLp);
 
-        lpAmount =
-            lpAmount +
-            ((deposit_amount * poolLP) >> 1) /
-            depositedRaisedToken;
+        lpAmount = cumulativeLP >> 1;
+
+        if (launchedTokenProvider != caller) {
+            lpAmount =
+                (raisedTokenDeposit[caller] * lpAmount) /
+                depositedRaisedToken;
+        }
     }
 
     function claimLaunchedToken(address claimer) external lock {
@@ -218,9 +231,9 @@ contract YexFTOPairV2 is IYexFTOPair, ERC20("YexFTOPairV2", "FTOLPV2") {
             raisedTokenDeposit[claimer] != 0,
             "only raised token depositer can claim."
         );
-        require(claimedLauncedToken[claimer] == false, "claimer have claimed.");
+        require(!claimedLaunchedToken[claimer], "claimer has claimed.");
 
-        claimedLauncedToken[claimer] = true;
+        claimedLaunchedToken[claimer] = true;
 
         uint256 amount = _calculateLaunchedTokenAmount(claimer);
 
@@ -242,16 +255,16 @@ contract YexFTOPairV2 is IYexFTOPair, ERC20("YexFTOPairV2", "FTOLPV2") {
     function _calculateLaunchedTokenAmount(
         address caller
     ) internal view returns (uint256 amount) {
-        if (claimedLauncedToken[caller] == true) {
+        if (claimedLaunchedToken[caller]) {
             return 0;
         }
-        amount = 0;
+
         uint256 deposit_amount = raisedTokenDeposit[caller];
-        uint256 poolLauncedTokenAmount = IERC20(launchedToken).balanceOf(
+        uint256 poolLaunchedTokenAmount = IERC20(launchedToken).balanceOf(
             address(this)
         );
         amount =
-            (deposit_amount * poolLauncedTokenAmount) /
+            (deposit_amount * poolLaunchedTokenAmount) /
             depositedRaisedToken;
     }
 
@@ -273,12 +286,37 @@ contract YexFTOPairV2 is IYexFTOPair, ERC20("YexFTOPairV2", "FTOLPV2") {
                 address(this),
                 block.timestamp + 100
             );
-            poolLP = (liquidity * (100 - feePercent)) / 100; // fee percent is 5%
-            fee = liquidity - poolLP;
+
+            address poolFactory = IHenloDexRouterV1(otherPool).factory();
+            address pair = IHenloDexFactory(poolFactory).getPair(
+                raisedToken,
+                launchedToken
+            );
+            lpToken = pair;
+
+            // send fee to factory
+            uint256 _totalLP = (liquidity * (100 - feePercent)) / 100; // fee percent is 5%
+            TransferHelper.safeTransfer(pair, factory, liquidity - _totalLP);
+
             FTOState = Status.Success;
+
+            // hook part
+            if (hook != address(0)) {
+                uint256 vestAmount = (_totalLP * percent4hook) / 100;
+                IERC20(pair).approve(hook, vestAmount);
+                IYexFTOHook(hook).afterAddLiquidity(
+                    address(this),
+                    pair,
+                    vestAmount
+                );
+            }
         } else {
             FTOState = Status.Failed;
         }
+    }
+
+    function _isUpkeepNeeded() internal view returns (bool) {
+        return block.timestamp > endTime && FTOState == Status.Processing;
     }
 
     function checkUpkeep(
@@ -289,17 +327,16 @@ contract YexFTOPairV2 is IYexFTOPair, ERC20("YexFTOPairV2", "FTOLPV2") {
         override
         returns (bool upkeepNeeded, bytes memory performData)
     {
-        upkeepNeeded = block.timestamp > endTime;
+        upkeepNeeded = _isUpkeepNeeded();
         performData = "";
     }
 
     function performUpkeep(bytes calldata) external override {
-        require(block.timestamp > endTime, "fund rasing not finished.");
+        require(_isUpkeepNeeded(), "fund raising not finished or paused");
         _perform();
     }
 
     function pause() external override {
-        require(block.timestamp < endTime, "fund rasing finished.");
         require(msg.sender == factory, "only factory can pause");
         require(FTOState == Status.Processing, "Launchpad is not in progress");
         FTOState = Status.Paused;
@@ -307,7 +344,6 @@ contract YexFTOPairV2 is IYexFTOPair, ERC20("YexFTOPairV2", "FTOLPV2") {
     }
 
     function resume() external override {
-        require(block.timestamp < endTime, "fund rasing finished.");
         require(msg.sender == factory, "only factory can resume");
         require(
             FTOState == Status.Paused,
@@ -317,20 +353,5 @@ contract YexFTOPairV2 is IYexFTOPair, ERC20("YexFTOPairV2", "FTOLPV2") {
         emit Resumed(block.timestamp);
     }
 
-    function withdrawFee(address feeTo) external override {
-        require(msg.sender == factory, "only factory can withdraw");
-        require(
-            FTOState == Status.Success || FTOState == Status.Failed,
-            "only withdrawFee when FTOState is successful or failed"
-        );
-        require(fee > 0, "amount to withdraw must be positive");
-
-        address poolFactory = IHenloDexRouterV1(otherPool).factory();
-        address pair = IHenloDexFactory(poolFactory).getPair(
-            raisedToken,
-            launchedToken
-        );
-        TransferHelper.safeTransfer(pair, feeTo, fee);
-        fee = 0;
-    }
+    function withdrawFee(address feeTo) external override {}
 }

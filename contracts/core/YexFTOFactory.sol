@@ -114,7 +114,7 @@ contract YexFTOFactory is IYexFTOFactory, Ownable, WhiteList {
             raisingCycle
         );
         _launchedToken.mint(pair, amount);
-        IYexFTOPair(pair).depositLaunchedToken(msg.sender, amount);
+        IYexFTOPair(pair).depositLaunchedToken(provider, amount);
     }
 
     function allPairsLength() external view override returns (uint) {

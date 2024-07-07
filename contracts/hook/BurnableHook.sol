@@ -7,10 +7,7 @@ import "./../core/YexFTOLaunchToken.sol";
 import "./NormalHook.sol";
 
 abstract contract BurnableHook is NormalHook {
-    function claimLP(
-        address ftoPair,
-        address lpToken
-    ) public virtual override {
+    function claimLP(address ftoPair, address lpToken) public virtual override {
         _claimLPAndBurn(ftoPair, lpToken);
     }
 

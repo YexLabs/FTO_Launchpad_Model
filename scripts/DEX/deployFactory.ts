@@ -1,6 +1,6 @@
 import * as dotenv from "dotenv";
 import * as hre from "hardhat";
-import { verify } from "./verify-contract";
+import { verify } from "../verify-contract";
 dotenv.config();
 
 async function main() {
@@ -24,7 +24,11 @@ async function deployFactory(feeWalletAddy: any) {
 
   console.log("INIT_HASH_CODE", await factoryContract.INIT_CODE_PAIR_HASH());
 
-  await verify(factoryContract.address, [process.env.FEE_WALLET]);
+  await verify(
+    factoryContract.address,
+    "contracts/core/HenloDexFactory.sol:HenloDexFactory",
+    [process.env.FEE_WALLET]
+  );
 
   return factoryContract.address;
 }

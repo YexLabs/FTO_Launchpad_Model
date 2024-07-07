@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.16;
 
-interface IYexFTOFactoryV3 {
+interface IYexFTOFactoryV2 {
     event PairCreated(
         address indexed token0,
         address indexed token1,

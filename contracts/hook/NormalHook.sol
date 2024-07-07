@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.16;
 import "../interfaces/IYexFTOHook.sol";
-import "../interfaces/IYexFTOFactoryV3.sol";
+import "../interfaces/IYexFTOFactoryV2.sol";
 import "./../libraries/TransferHelper.sol";
 
 contract NormalHook is IYexFTOHook {
@@ -23,7 +23,7 @@ contract NormalHook is IYexFTOHook {
         uint256 raisingCycle,
         bytes calldata data
     ) public virtual {
-        IYexFTOFactoryV3(ftoFactory).createFTO(
+        IYexFTOFactoryV2(ftoFactory).createFTO(
             raisedToken,
             name,
             symbol,
@@ -35,8 +35,10 @@ contract NormalHook is IYexFTOHook {
         );
     }
 
-
-    function claimLP(address /*ftoPair*/, address /*lpToken*/) external virtual {
+    function claimLP(
+        address /*ftoPair*/,
+        address /*lpToken*/
+    ) external virtual {
         revert NotImplemented();
     }
 

@@ -21,7 +21,11 @@ async function deployFTOFacade(factoryContractAddy: any) {
   await yexFTOFacadeContract.deployTransaction.wait(10);
   console.log("Confirmed!");
 
-  await verify(yexFTOFacadeContract.address, [factoryContractAddy]);
+  await verify(
+    yexFTOFacadeContract.address,
+    "contracts/core/YexFTOFacade.sol:YexFTOFacade",
+    [factoryContractAddy]
+  );
 
   return yexFTOFacadeContract.address;
 }

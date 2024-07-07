@@ -3,8 +3,8 @@ pragma solidity ^0.8.16;
 
 import "../libraries/ERC20.sol";
 
-contract SOL is ERC20 {
-    constructor() ERC20("SOL", "SOL") {}
+contract ERC20Faucet is ERC20 {
+    constructor(string memory name, string memory symbol) ERC20(name, symbol) {}
 
     mapping(address => bool) public faucetedList;
 

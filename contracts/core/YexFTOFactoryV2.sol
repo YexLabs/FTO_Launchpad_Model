@@ -1,25 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.16;
 
-import "../interfaces/IYexFTOFactory.sol";
-import "./YexFTOPairV2.sol";
 import "./WhiteList.sol";
+import "./YexFTOPairV2.sol";
+import "./YexFTOLaunchToken.sol";
 import "../libraries/Ownable.sol";
-import "../libraries/ERC20.sol";
-import {LinkTokenInterface} from "@chainlink/contracts/src/v0.8/shared/interfaces/LinkTokenInterface.sol";
+import "../interfaces/IYexFTOFactoryV2.sol";
 
-contract ERC20Mintable is ERC20, Ownable {
-    constructor(
-        string memory name_,
-        string memory symbol_
-    ) ERC20(name_, symbol_) {}
-
-    function mint(address to, uint256 amount) public onlyOwner {
-        _mint(to, amount);
-    }
-}
-
-contract YexFTOFactoryV2 is IYexFTOFactory, Ownable, WhiteList {
+contract YexFTOFactoryV2 is IYexFTOFactoryV2, WhiteList {
     address[] public allPairs;
     address[] public raisedTokens;
 
@@ -58,26 +46,35 @@ contract YexFTOFactoryV2 is IYexFTOFactory, Ownable, WhiteList {
     }
 
     function createFTO(
-        address provider,
         address raisedToken,
         string calldata name,
         string calldata symbol,
         uint256 _amount,
+        uint256 launchedTokenPercent,
         address poolHandler,
-        uint256 raisingCycle
+        uint256 raisingCycle,
+        bytes calldata data
     ) external override onlyWhiteList returns (address pair) {
-        ERC20Mintable _launchedToken = new ERC20Mintable(name, symbol);
+        YexFTOLaunchToken _launchedToken = new YexFTOLaunchToken(
+            name,
+            symbol,
+            msg.sender
+        );
         uint256 amount = _amount; // mint _amount launchedToken
         address launchedToken = address(_launchedToken);
 
         pair = _createPair(
             raisedToken,
             launchedToken,
-            provider,
+            msg.sender,
+            launchedTokenPercent,
             poolHandler,
-            raisingCycle
+            raisingCycle,
+            data
         );
+
         _launchedToken.mint(pair, amount);
+
         IYexFTOPair(pair).depositLaunchedToken(msg.sender, amount);
     }
 
@@ -93,8 +90,10 @@ contract YexFTOFactoryV2 is IYexFTOFactory, Ownable, WhiteList {
         address raisedToken,
         address launchedToken,
         address launchedTokenProvider,
+        uint256 launchedTokenPercent,
         address swapHandler,
-        uint256 raisingCycle
+        uint256 raisingCycle,
+        bytes calldata data
     ) internal returns (address pair) {
         require(
             raisedToken != launchedToken,
@@ -123,9 +122,10 @@ contract YexFTOFactoryV2 is IYexFTOFactory, Ownable, WhiteList {
             raisedToken,
             launchedToken,
             launchedTokenProvider,
+            launchedTokenPercent,
             swapHandler,
             raisingCycle,
-            "0x"
+            data
         );
         getPair[token0][token1] = pair;
         getPair[token1][token0] = pair; // populate mapping in the reverse direction
@@ -169,7 +169,14 @@ contract YexFTOFactoryV2 is IYexFTOFactory, Ownable, WhiteList {
         address launchedToken,
         address feeTo
     ) external onlyOwner {
+        require(feeTo != address(0), "YexFTOFactory: INVALID_FEE_TO_ADDRESS");
         address pair = getPair[raisedToken][launchedToken];
-        IYexFTOPair(pair).withdrawFee(feeTo);
+        address lpToken = YexFTOPairV2(pair).lpToken();
+        require(lpToken != address(0), "YexFTOFactory: LP_TOKEN_ZERO_ADDRESS");
+
+        uint256 fee = IERC20(lpToken).balanceOf(address(this));
+        if (fee > 0) {
+            TransferHelper.safeTransfer(lpToken, feeTo, fee);
+        }
     }
 }

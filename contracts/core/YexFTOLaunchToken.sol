@@ -15,7 +15,7 @@ contract YexFTOLaunchToken is ERC20, AccessControl {
     ) ERC20(name_, symbol_) {
         _setupRole(MINTER_ROLE, _msgSender());
         _setupRole(BURNER_ROLE, provider_);
-    }   
+    }
 
     function mint(address to, uint256 amount) public onlyRole(MINTER_ROLE) {
         _mint(to, amount);

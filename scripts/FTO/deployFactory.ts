@@ -24,7 +24,11 @@ async function deployFTOFactory() {
   console.log("Confirmed!");
 
   console.log("INIT_HASH_CODE", await ftoFactoryContract.INIT_CODE_PAIR_HASH());
-  const v1 = verify(ftoFactoryContract.address, []);
+  const v1 = verify(
+    ftoFactoryContract.address,
+    "contracts/core/YexFTOFactory.sol:YexFTOFactory",
+    []
+  );
   await v1;
 
   // const setUpTx = await ftoFactoryContract.setNoWhiteList(true);
