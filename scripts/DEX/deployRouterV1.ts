@@ -11,7 +11,7 @@ async function main() {
 }
 
 async function deployRouterV1(factoryContractAddy: any, WETHAddy: any) {
-  const router02 = await hre.ethers.getContractFactory("HenloDexRouterV1");
+  const router02 = await hre.ethers.getContractFactory("HenloDexRouterV2");
   const router02Contract = await router02.deploy(factoryContractAddy, WETHAddy);
 
   await router02Contract.deployed();
@@ -25,7 +25,7 @@ async function deployRouterV1(factoryContractAddy: any, WETHAddy: any) {
 
   await verify(
     router02Contract.address,
-    "contracts/core/HenloDexRouterV1.sol:HenloDexRouterV1",
+    "contracts/core/HenloDexRouterV1.sol:HenloDexRouterV2",
     [factoryContractAddy, WETHAddy]
   );
 }

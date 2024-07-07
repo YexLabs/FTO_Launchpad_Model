@@ -31,8 +31,10 @@ abstract contract VestingHook is NormalHook {
     }
 
     modifier onlyFTOPair() {
-        require(getPair[msg.sender].beneficiaryAddress != address(0),
-        "FTOPair not added or not authorized");
+        require(
+            getPair[msg.sender].beneficiaryAddress != address(0),
+            "FTOPair not added or not authorized"
+        );
         _;
     }
 
@@ -46,7 +48,16 @@ abstract contract VestingHook is NormalHook {
         uint256 raisingCycle,
         bytes calldata data
     ) public virtual override lockFunction {
-        super.createFTO(raisedToken, name, symbol, amount, launchedTokenPercent, poolHandler, raisingCycle, data);
+        super.createFTO(
+            raisedToken,
+            name,
+            symbol,
+            amount,
+            launchedTokenPercent,
+            poolHandler,
+            raisingCycle,
+            data
+        );
     }
 
     function execute(
@@ -57,16 +68,15 @@ abstract contract VestingHook is NormalHook {
             "pair have added."
         );
 
-        (
-            address beneficiaryAddress,
-            uint64 startTimestamp,
-            uint64 durationSeconds
-        ) = abi.decode(data, (address, uint64, uint64));
+        (uint64 startTimestamp, uint64 durationSeconds) = abi.decode(
+            data,
+            (uint64, uint64)
+        );
 
         require(startTimestamp > 0, "vesting time cannot less than 0");
 
         getPair[msg.sender] = VestingInfo(
-            beneficiaryAddress,
+            msg.sender,
             startTimestamp,
             durationSeconds,
             address(0)
