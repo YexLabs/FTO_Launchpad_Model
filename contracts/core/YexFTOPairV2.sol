@@ -16,6 +16,8 @@ contract YexFTOPairV2 is IYexFTOPair {
     address public raisedToken; // raisedToken is used to subscribe tokenB
     address public launchedToken; // launchedToken is the issuer
 
+    uint256 public poolLaunchedTokenAmount; // default is 0;
+
     address public launchedTokenProvider;
     uint256 public launchPercent = 100; // launch percentage defaults to 100
 
@@ -239,9 +241,9 @@ contract YexFTOPairV2 is IYexFTOPair {
         );
         require(!claimedLaunchedToken[claimer], "claimer has claimed.");
 
-        claimedLaunchedToken[claimer] = true;
-
         uint256 amount = _calculateLaunchedTokenAmount(claimer);
+
+        claimedLaunchedToken[claimer] = true;
 
         require(amount > 0, "claim amount is too small.");
 
@@ -266,9 +268,7 @@ contract YexFTOPairV2 is IYexFTOPair {
         }
 
         uint256 deposit_amount = raisedTokenDeposit[caller];
-        uint256 poolLaunchedTokenAmount = IERC20(launchedToken).balanceOf(
-            address(this)
-        );
+
         amount =
             (deposit_amount * poolLaunchedTokenAmount) /
             depositedRaisedToken;
@@ -280,6 +280,7 @@ contract YexFTOPairV2 is IYexFTOPair {
             // addLiquidity
             uint256 launchAmount = (depositedLaunchedToken * launchPercent) /
                 100;
+            poolLaunchedTokenAmount = depositedLaunchedToken - launchAmount;
             IERC20(raisedToken).approve(otherPool, depositedRaisedToken);
             IERC20(launchedToken).approve(otherPool, launchAmount);
             (, , uint liquidity) = IHenloDexRouterV1(otherPool).addLiquidity(

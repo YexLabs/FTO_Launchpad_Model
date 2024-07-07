@@ -4,7 +4,6 @@ pragma solidity ^0.8.16;
 import "../libraries/ERC20.sol";
 import "../libraries/Math.sol";
 import "../libraries/Ownable.sol";
-import "../libraries/Console.sol";
 import "../interfaces/IYexFTOPair.sol";
 import "../interfaces/IYexFTOFactory.sol";
 import "../interfaces/IHenloDexRouterV1.sol";

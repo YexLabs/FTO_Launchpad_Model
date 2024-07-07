@@ -1,10 +1,10 @@
 import { ethers, network } from "hardhat";
+import { ERC20Faucet } from "./../../typechain-types/contracts/core/ERC20Faucet";
 import { YexFTOFacade } from "./../../typechain-types/contracts/core/YexFTOFacade";
 
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
 import {
-  ERC20Faucet,
   HenloDexFactory,
   HenloDexPair,
   HenloDexRouterV2,
@@ -43,8 +43,6 @@ describe("YexFTO", function () {
       addr2.address,
     ]);
 
-    console.log(await ftoFactory.INIT_CODE_PAIR_HASH());
-
     // YexFTOFacade
     const YexFTOFacade = await ethers.getContractFactory("YexFTOFacade");
     ftoFacade = (await YexFTOFacade.deploy(ftoFactory.address)) as YexFTOFacade;
@@ -81,7 +79,11 @@ describe("YexFTO", function () {
     console.log("USDT address: ", usdt.address);
   });
 
-  it("test normal FTo", async function () {
+  it("test 100% launchedToken FTO", async function () {
+    const raisedTokens = await ftoFactory.allRaisedTokens();
+    expect(raisedTokens.length).to.equal(1);
+    expect(raisedTokens[0]).to.equal(usdt.address);
+
     // 1. test create FTO with an error token
     const ERC20Faucet = await ethers.getContractFactory("ERC20Faucet");
     const errRaisedToken = (await ERC20Faucet.deploy(
@@ -141,12 +143,18 @@ describe("YexFTO", function () {
     const ftoPair_addr = await ftoFactory.allPairs(0);
     const YexFTOPairV2 = await ethers.getContractFactory("YexFTOPairV2");
     const ftoPair = YexFTOPairV2.attach(ftoPair_addr) as YexFTOPairV2;
+    const launchedToken = await ftoPair.launchedToken();
 
     expect(await ftoFactory.allPairsLength()).to.equal(1);
     expect(await ftoPair.launchedTokenProvider()).to.equal(addr1.address);
+    expect(
+      await ftoFacade.getFTOPairProvider(usdt.address, launchedToken)
+    ).to.equal(addr1.address);
+    expect(
+      await ftoFactory.getFTOPairProvider(usdt.address, launchedToken)
+    ).to.equal(addr1.address);
 
     // 4. deposit usdt with provider
-    const launchedToken = await ftoPair.launchedToken();
     expect(await ftoFacade.getFTOPair(usdt.address, launchedToken)).to.equal(
       ftoPair_addr
     );
@@ -249,6 +257,8 @@ describe("YexFTO", function () {
     await network.provider.send("evm_increaseTime", [raisingCycle + 5]);
     await network.provider.send("evm_mine");
 
+    expect((await ftoPair.checkUpkeep("0x"))[0]).to.be.true;
+
     await ftoPair.performUpkeep("0x");
     const poolPair_addr = await ftoPair.lpToken();
 
@@ -263,8 +273,12 @@ describe("YexFTO", function () {
     );
 
     const lp_provider = await ftoPair.claimableLP(addr1.address);
+    const lp_provider_from_facade = await ftoFacade
+      .connect(addr1)
+      .claimableLP(usdt.address, launchedToken);
     const lp_depositer = await ftoPair.claimableLP(addr2.address);
     expect(lp_provider).to.equal(total_Lp.div(2));
+    expect(lp_provider).to.equal(lp_provider_from_facade);
     expect(lp_depositer).to.equal(total_Lp.div(2));
 
     // 10. claimLP
@@ -291,6 +305,93 @@ describe("YexFTO", function () {
     await ftoFactory.withdrawFee(usdt.address, launchedToken, owner.address);
     expect(await poolPair.balanceOf(owner.address)).to.equal(
       after_claim_total_Lp
+    );
+  });
+  it("test 95% launched FTO", async function () {
+    const name = "TestToken";
+    const symbol = "TT";
+
+    const amount = ethers.utils.parseUnits("1000000000", 18);
+    const poolHandler = henloDexRouter.address;
+    const raisingCycle = 120; // 120 seconds
+    const launchedPercent = 95;
+
+    // 1. create FTO
+    await ftoFactory.connect(addr1).createFTO(
+      usdt.address,
+      name,
+      symbol,
+      amount,
+      launchedPercent, // not 100% launched
+      poolHandler,
+      raisingCycle,
+      "0x"
+    );
+
+    const ftoPair_addr = await ftoFactory.allPairs(0);
+    const YexFTOPairV2 = await ethers.getContractFactory("YexFTOPairV2");
+    const ftoPair = YexFTOPairV2.attach(ftoPair_addr) as YexFTOPairV2;
+    const launchedToken = await ftoPair.launchedToken();
+
+    // 2. deposit
+    let deposit_amount = ethers.utils.parseUnits("100", 18);
+    await usdt.connect(addr2).faucet();
+    await usdt.connect(addr2).approve(ftoFacade.address, deposit_amount);
+    await ftoFacade
+      .connect(addr2)
+      .deposit(usdt.address, launchedToken, deposit_amount, 0);
+
+    deposit_amount = ethers.utils.parseUnits("200", 18);
+    await usdt.connect(addr3).faucet();
+    await usdt.connect(addr3).approve(ftoFacade.address, deposit_amount);
+    await ftoFacade
+      .connect(addr3)
+      .deposit(usdt.address, launchedToken, deposit_amount, 0);
+
+    // 3. perform
+    // Move time forward and mine a new block
+    await network.provider.send("evm_increaseTime", [raisingCycle + 5]);
+    await network.provider.send("evm_mine");
+
+    expect((await ftoPair.checkUpkeep("0x"))[0]).to.be.true;
+
+    await ftoPair.performUpkeep("0x");
+
+    const ERC20 = await ethers.getContractFactory("ERC20Faucet");
+    const launchedTokenContract = ERC20.attach(launchedToken) as ERC20Faucet;
+    // console.log(await launchedTokenContract.balanceOf(ftoPair.address));
+    expect(await launchedTokenContract.balanceOf(ftoPair.address)).to.equal(
+      amount.mul(100 - launchedPercent).div(100)
+    );
+
+    // 4. claimable launched Token
+    const launchedToken_amount_addr2 = await ftoPair.claimableLaunchedToken(
+      addr2.address
+    );
+    const launchedToken_amount_addr3 = await ftoPair.claimableLaunchedToken(
+      addr3.address
+    );
+
+    // 5. claim
+    await expect(ftoPair.claimLaunchedToken(owner.address)).to.be.revertedWith(
+      "only raised token depositer can claim."
+    );
+    await expect(ftoPair.claimLaunchedToken(addr1.address)).to.be.revertedWith(
+      "only raised token depositer can claim."
+    );
+
+    await ftoPair.claimLaunchedToken(addr2.address);
+    await ftoPair.claimLaunchedToken(addr3.address);
+
+    expect(launchedToken_amount_addr2).to.equal(
+      await launchedTokenContract.balanceOf(addr2.address)
+    );
+    expect(launchedToken_amount_addr3).to.equal(
+      await launchedTokenContract.balanceOf(addr3.address)
+    );
+
+    await expect(ftoPair.claimLaunchedToken(addr3.address)).to.be.revertedWith(
+      "claimer has claimed."
     );
   });
 });
