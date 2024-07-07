@@ -3,12 +3,14 @@
 pragma solidity =0.8.16;
 
 import "./HenloDexERC20.sol";
+import "../interfaces/IERC20.sol";
 import "../libraries/Math.sol";
 import "../libraries/UQ112x112.sol";
 import "../interfaces/IERC20.sol";
 import "../interfaces/IHenloDexFactory.sol";
 import "../interfaces/IHenloDexCallee.sol";
 
+// TODO:used for single liquidity
 contract HenloDexPair is HenloDexERC20 {
     using SafeMathUniswap for uint;
     using UQ112x112 for uint224;
@@ -87,6 +89,14 @@ contract HenloDexPair is HenloDexERC20 {
         require(msg.sender == factory, "HenloDex: FORBIDDEN"); // sufficient check
         token0 = _token0;
         token1 = _token1;
+        string memory _name = string.concat(
+            IERC20(_token0).name(),
+            "_",
+            IERC20(_token1).name(),
+            " HLP"
+        );
+        name = _name;
+        symbol = _name;
     }
 
     // update reserves and, on the first call per block, price accumulators
@@ -155,9 +165,12 @@ contract HenloDexPair is HenloDexERC20 {
             liquidity = Math.sqrt(amount0.mul(amount1)).sub(MINIMUM_LIQUIDITY);
             _mint(address(0), MINIMUM_LIQUIDITY); // permanently lock the first MINIMUM_LIQUIDITY tokens
         } else {
-            liquidity = Math.min(
-                amount0.mul(_totalSupply) / _reserve0,
-                amount1.mul(_totalSupply) / _reserve1
+            liquidity = _liquidityToAdd(
+                _totalSupply,
+                amount0,
+                amount1,
+                _reserve0,
+                _reserve1
             );
         }
         require(liquidity > 0, "HenloDex: INSUFFICIENT_LIQUIDITY_MINTED");
@@ -283,5 +296,31 @@ contract HenloDexPair is HenloDexERC20 {
             reserve0,
             reserve1
         );
+    }
+
+    function _liquidityToAdd(
+        uint256 _totalSupply,
+        uint256 _amount0,
+        uint256 _amount1,
+        uint256 _reserve0,
+        uint256 _reserve1
+    ) internal pure returns (uint256 liquidity) {
+        if (_amount0 > 0) {
+            liquidity =
+                (_totalSupply * Math.sqrt((_amount0 + _reserve0) * _reserve0)) /
+                _reserve0 -
+                _totalSupply;
+            _totalSupply += liquidity;
+        }
+
+        if (_amount1 > 0) {
+            uint256 newLiquidity = (_totalSupply *
+                Math.sqrt((_amount1 + _reserve1) * _reserve1)) /
+                _reserve1 -
+                _totalSupply;
+            liquidity = liquidity + newLiquidity; // Adding liquidity from amount1
+        }
+
+        return liquidity;
     }
 }

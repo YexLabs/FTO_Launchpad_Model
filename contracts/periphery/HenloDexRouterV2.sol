@@ -11,7 +11,7 @@ import "../interfaces/IHenloDexRouterV1.sol";
 import "../interfaces/IERC20.sol";
 import "../interfaces/IWETH.sol";
 
-// for single-side liquidity
+// TODO:used for single liquidity
 contract HenloDexRouterV2 is IHenloDexRouterV1 {
     using SafeMathUniswap for uint;
 
@@ -19,7 +19,7 @@ contract HenloDexRouterV2 is IHenloDexRouterV1 {
     address public immutable override WETH;
 
     modifier ensure(uint deadline) {
-        require(deadline >= block.timestamp, "UniswapV2Router: EXPIRED");
+        require(deadline >= block.timestamp, "HenloDexRouter: EXPIRED");
         _;
     }
 
@@ -64,7 +64,7 @@ contract HenloDexRouterV2 is IHenloDexRouterV1 {
             if (amountBOptimal <= amountBDesired) {
                 require(
                     amountBOptimal >= amountBMin,
-                    "UniswapV2Router: INSUFFICIENT_B_AMOUNT"
+                    "HenloDexRouter: INSUFFICIENT_B_AMOUNT"
                 );
                 (amountA, amountB) = (amountADesired, amountBOptimal);
             } else {
@@ -76,7 +76,7 @@ contract HenloDexRouterV2 is IHenloDexRouterV1 {
                 assert(amountAOptimal <= amountADesired);
                 require(
                     amountAOptimal >= amountAMin,
-                    "UniswapV2Router: INSUFFICIENT_A_AMOUNT"
+                    "HenloDexRouter: INSUFFICIENT_A_AMOUNT"
                 );
                 (amountA, amountB) = (amountAOptimal, amountBDesired);
             }
@@ -169,14 +169,8 @@ contract HenloDexRouterV2 is IHenloDexRouterV1 {
         (amountA, amountB) = tokenA == token0
             ? (amount0, amount1)
             : (amount1, amount0);
-        require(
-            amountA >= amountAMin,
-            "UniswapV2Router: INSUFFICIENT_A_AMOUNT"
-        );
-        require(
-            amountB >= amountBMin,
-            "UniswapV2Router: INSUFFICIENT_B_AMOUNT"
-        );
+        require(amountA >= amountAMin, "HenloDexRouter: INSUFFICIENT_A_AMOUNT");
+        require(amountB >= amountBMin, "HenloDexRouter: INSUFFICIENT_B_AMOUNT");
     }
 
     function removeLiquidityETH(
@@ -377,7 +371,7 @@ contract HenloDexRouterV2 is IHenloDexRouterV1 {
         amounts = HenloDexLibrary.getAmountsOut(factory, amountIn, path);
         require(
             amounts[amounts.length - 1] >= amountOutMin,
-            "UniswapV2Router: INSUFFICIENT_OUTPUT_AMOUNT"
+            "HenloDexRouter: INSUFFICIENT_OUTPUT_AMOUNT"
         );
         TransferHelper.safeTransferFrom(
             path[0],
@@ -404,7 +398,7 @@ contract HenloDexRouterV2 is IHenloDexRouterV1 {
         amounts = HenloDexLibrary.getAmountsIn(factory, amountOut, path);
         require(
             amounts[0] <= amountInMax,
-            "UniswapV2Router: EXCESSIVE_INPUT_AMOUNT"
+            "HenloDexRouter: EXCESSIVE_INPUT_AMOUNT"
         );
         TransferHelper.safeTransferFrom(
             path[0],
@@ -428,11 +422,11 @@ contract HenloDexRouterV2 is IHenloDexRouterV1 {
         ensure(deadline)
         returns (uint[] memory amounts)
     {
-        require(path[0] == WETH, "UniswapV2Router: INVALID_PATH");
+        require(path[0] == WETH, "HenloDexRouter: INVALID_PATH");
         amounts = HenloDexLibrary.getAmountsOut(factory, msg.value, path);
         require(
             amounts[amounts.length - 1] >= amountOutMin,
-            "UniswapV2Router: INSUFFICIENT_OUTPUT_AMOUNT"
+            "HenloDexRouter: INSUFFICIENT_OUTPUT_AMOUNT"
         );
         IWETH(WETH).deposit{value: amounts[0]}();
         assert(
@@ -457,11 +451,11 @@ contract HenloDexRouterV2 is IHenloDexRouterV1 {
         ensure(deadline)
         returns (uint[] memory amounts)
     {
-        require(path[path.length - 1] == WETH, "UniswapV2Router: INVALID_PATH");
+        require(path[path.length - 1] == WETH, "HenloDexRouter: INVALID_PATH");
         amounts = HenloDexLibrary.getAmountsIn(factory, amountOut, path);
         require(
             amounts[0] <= amountInMax,
-            "UniswapV2Router: EXCESSIVE_INPUT_AMOUNT"
+            "HenloDexRouter: EXCESSIVE_INPUT_AMOUNT"
         );
         TransferHelper.safeTransferFrom(
             path[0],
@@ -487,11 +481,11 @@ contract HenloDexRouterV2 is IHenloDexRouterV1 {
         ensure(deadline)
         returns (uint[] memory amounts)
     {
-        require(path[path.length - 1] == WETH, "UniswapV2Router: INVALID_PATH");
+        require(path[path.length - 1] == WETH, "HenloDexRouter: INVALID_PATH");
         amounts = HenloDexLibrary.getAmountsOut(factory, amountIn, path);
         require(
             amounts[amounts.length - 1] >= amountOutMin,
-            "UniswapV2Router: INSUFFICIENT_OUTPUT_AMOUNT"
+            "HenloDexRouter: INSUFFICIENT_OUTPUT_AMOUNT"
         );
         TransferHelper.safeTransferFrom(
             path[0],
@@ -517,11 +511,11 @@ contract HenloDexRouterV2 is IHenloDexRouterV1 {
         ensure(deadline)
         returns (uint[] memory amounts)
     {
-        require(path[0] == WETH, "UniswapV2Router: INVALID_PATH");
+        require(path[0] == WETH, "HenloDexRouter: INVALID_PATH");
         amounts = HenloDexLibrary.getAmountsIn(factory, amountOut, path);
         require(
             amounts[0] <= msg.value,
-            "UniswapV2Router: EXCESSIVE_INPUT_AMOUNT"
+            "HenloDexRouter: EXCESSIVE_INPUT_AMOUNT"
         );
         IWETH(WETH).deposit{value: amounts[0]}();
         assert(
@@ -593,7 +587,7 @@ contract HenloDexRouterV2 is IHenloDexRouterV1 {
         require(
             IERC20(path[path.length - 1]).balanceOf(to).sub(balanceBefore) >=
                 amountOutMin,
-            "UniswapV2Router: INSUFFICIENT_OUTPUT_AMOUNT"
+            "HenloDexRouter: INSUFFICIENT_OUTPUT_AMOUNT"
         );
     }
 
@@ -603,7 +597,7 @@ contract HenloDexRouterV2 is IHenloDexRouterV1 {
         address to,
         uint deadline
     ) external payable virtual override ensure(deadline) {
-        require(path[0] == WETH, "UniswapV2Router: INVALID_PATH");
+        require(path[0] == WETH, "HenloDexRouter: INVALID_PATH");
         uint amountIn = msg.value;
         IWETH(WETH).deposit{value: amountIn}();
         assert(
@@ -617,7 +611,7 @@ contract HenloDexRouterV2 is IHenloDexRouterV1 {
         require(
             IERC20(path[path.length - 1]).balanceOf(to).sub(balanceBefore) >=
                 amountOutMin,
-            "UniswapV2Router: INSUFFICIENT_OUTPUT_AMOUNT"
+            "HenloDexRouter: INSUFFICIENT_OUTPUT_AMOUNT"
         );
     }
 
@@ -628,7 +622,7 @@ contract HenloDexRouterV2 is IHenloDexRouterV1 {
         address to,
         uint deadline
     ) external virtual override ensure(deadline) {
-        require(path[path.length - 1] == WETH, "UniswapV2Router: INVALID_PATH");
+        require(path[path.length - 1] == WETH, "HenloDexRouter: INVALID_PATH");
         TransferHelper.safeTransferFrom(
             path[0],
             msg.sender,
@@ -639,7 +633,7 @@ contract HenloDexRouterV2 is IHenloDexRouterV1 {
         uint amountOut = IERC20(WETH).balanceOf(address(this));
         require(
             amountOut >= amountOutMin,
-            "UniswapV2Router: INSUFFICIENT_OUTPUT_AMOUNT"
+            "HenloDexRouter: INSUFFICIENT_OUTPUT_AMOUNT"
         );
         IWETH(WETH).withdraw(amountOut);
         TransferHelper.safeTransferETH(to, amountOut);

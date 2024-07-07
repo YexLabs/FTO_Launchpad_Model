@@ -7,8 +7,8 @@ import "../libraries/SafeMathUniswap.sol";
 contract HenloDexERC20 {
     using SafeMathUniswap for uint;
 
-    string public constant name = "Honeypot Finance";
-    string public constant symbol = "HPOT";
+    string public name = "HenloDEX LP";
+    string public symbol = "HLP";
     uint8 public constant decimals = 18;
     uint public totalSupply;
     mapping(address => uint) public balanceOf;
