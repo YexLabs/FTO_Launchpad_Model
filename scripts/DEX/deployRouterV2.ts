@@ -5,7 +5,7 @@ dotenv.config();
 
 async function main() {
   await deployRouterV1(
-    "0x2f795195bae7E61E848ffC87ba7f6ae1A06c0527",
+    "0xBd650D068a02F1A0Bf12EE94c3517471B7CaF8fD",
     "0x7507c1dc16935B82698e4C63f2746A2fCf994dF8"
   );
 }
@@ -16,7 +16,7 @@ async function deployRouterV1(factoryContractAddy: any, WETHAddy: any) {
 
   await router02Contract.deployed();
   console.log(
-    `HenloDexRouterV1 contract deployed to ${router02Contract.address}`
+    `HenloDexRouterV2 contract deployed to ${router02Contract.address}`
   );
 
   console.log("Waiting for blocks confirmations...");
@@ -25,7 +25,7 @@ async function deployRouterV1(factoryContractAddy: any, WETHAddy: any) {
 
   await verify(
     router02Contract.address,
-    "contracts/core/HenloDexRouterV1.sol:HenloDexRouterV2",
+    "contracts/periphery/HenloDexRouterV2.sol:HenloDexRouterV2",
     [factoryContractAddy, WETHAddy]
   );
 }

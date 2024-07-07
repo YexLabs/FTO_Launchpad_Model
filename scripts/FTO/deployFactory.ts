@@ -15,7 +15,9 @@ async function deployFTOFactory() {
 
   const FTOFactory = await ethers.getContractFactory("YexFTOFactoryV2");
   const ftoFactoryContract = await FTOFactory.deploy([]);
-  console.log(`FTOFactory contract deployed to ${ftoFactoryContract.address}`);
+  console.log(
+    `YexFTOFactoryV2 contract deployed to ${ftoFactoryContract.address}`
+  );
 
   await ftoFactoryContract.deployed();
 
@@ -26,7 +28,7 @@ async function deployFTOFactory() {
   console.log("INIT_HASH_CODE", await ftoFactoryContract.INIT_CODE_PAIR_HASH());
   const v1 = verify(
     ftoFactoryContract.address,
-    "contracts/core/YexFTOFactory.sol:YexFTOFactoryV2",
+    "contracts/core/YexFTOFactoryV2.sol:YexFTOFactoryV2",
     []
   );
   await v1;

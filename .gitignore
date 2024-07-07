@@ -4,6 +4,9 @@ cache/
 bin/
 .vscode/
 
+scripts/deploy_info
+scripts/deploy_info.zip
+
 .env
 node_modules
 .env
@@ -15,7 +18,6 @@ typechain-types
 # Hardhat files
 cache
 artifacts
-
 
 node_modules
 .env
