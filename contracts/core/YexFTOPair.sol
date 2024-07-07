@@ -142,6 +142,7 @@ contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
         require(deposit_amount > 0, "refundable amount is 0");
 
         raisedTokenDeposit[depositer] = 0;
+        depositedRaisedToken -= deposit_amount;
         IERC20(raisedToken).transfer(depositer, deposit_amount);
 
         emit Refund(depositer, deposit_amount);
@@ -156,8 +157,12 @@ contract YexFTOPair is IYexFTOPair, ERC20("YexFTOPair", "FTOLP") {
             launchedTokenProvider == withdrawer,
             "only provider can withdraw"
         );
-        IERC20(launchedToken).transfer(withdrawer, depositedLaunchedToken);
-        emit Withdraw(withdrawer, depositedLaunchedToken);
+        uint256 withdraw_amount = depositedLaunchedToken;
+        depositedLaunchedToken = 0;
+
+        IERC20(launchedToken).transfer(withdrawer, withdraw_amount);
+
+        emit Withdraw(withdrawer, withdraw_amount);
     }
 
     function claimLP(address claimer) external lock {
