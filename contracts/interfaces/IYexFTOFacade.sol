@@ -5,33 +5,38 @@ interface IYexFTOFacade {
     function factory() external view returns (address);
 
     function deposit(
-        address tokenA,
-        address tokenB,
-        uint256 amountA,
-        uint256 amountB
+        address raisedToken,
+        address launchedToken,
+        uint256 raisedTokenAmount,
+        uint256 launchedTokenAmount
     ) external;
 
-    function withdraw(address tokenA, address tokenB) external;
+    function withdraw(address raisedToken, address launchedToken) external;
 
-    function claimLP(address tokenA, address tokenB) external;
+    function claimLP(address raisedToken, address launchedToken) external;
+
+    function refundRaisedToken(
+        address raisedToken,
+        address launchedToken
+    ) external;
 
     function claimableLP(
-        address tokenA,
-        address tokenB
+        address raisedToken,
+        address launchedToken
     ) external view returns (uint256);
 
     function getFTOPairProvider(
-        address tokenA,
-        address tokenB
+        address raisedToken,
+        address launchedToken
     ) external view returns (address provider);
 
     function getFTOPair(
-        address tokenA,
-        address tokenB
+        address raisedToken,
+        address launchedToken
     ) external view returns (address pair);
 
     function getFTOState(
-        address tokenA,
-        address tokenB
+        address raisedToken,
+        address launchedToken
     ) external view returns (uint256 state);
 }

@@ -4,7 +4,7 @@ import { verify } from "../verify-contract";
 dotenv.config();
 
 async function main() {
-  const factoryAddr = "0x5AD84056574066c774C5e58BC4a0652b6c171253";
+  const factoryAddr = "0x4E386552b2ed8E5050A89312Da07C7B9Ee8122c2";
   await deployFTOFacade(factoryAddr);
 }
 

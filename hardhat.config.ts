@@ -31,8 +31,6 @@ const config: HardhatUserConfig = {
     goerli: {
       url: process.env.GOERLI_TESTNET_URL || "https://rpc.ankr.com/eth_goerli",
       accounts:
-        // process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
-        // process.env.PRIVATE_JSON_FILE_PATH !== undefined ? parsePrivateKeysFiles(process.env.PRIVATE_JSON_FILE_PATH) : [],
         process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
     },
     polygon_mumbai: {
@@ -60,6 +58,16 @@ const config: HardhatUserConfig = {
       accounts:
         process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
     },
+    berachainArtio: {
+      url: "https://artio.rpc.berachain.com",
+      accounts:
+        process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
+    },
+    berachainBrtio: {
+      url: "https://bartio.rpc.berachain.com",
+      accounts:
+        process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
+    },
   },
   etherscan: {
     apiKey: {
@@ -82,6 +90,8 @@ const config: HardhatUserConfig = {
         process.env.GOERLISCAN_API_KEY !== undefined
           ? process.env.GOERLISCAN_API_KEY
           : "",
+      berachainArtio: "XXX",
+      berachainBrtio: "XXX",
     },
     customChains: [
       {
@@ -128,8 +138,6 @@ const config: HardhatUserConfig = {
         network: "sepolia_scroll",
         chainId: 534351,
         urls: {
-          // apiURL: "https://sepolia-blockscout.scroll.io/api",
-          // browserURL: "https://sepolia-blockscout.scroll.io/",
           apiURL: "https://api-sepolia.scrollscan.com/api",
           browserURL: "https://sepolia.scrollscan.com/",
         },
@@ -148,6 +156,24 @@ const config: HardhatUserConfig = {
         urls: {
           apiURL: "https://api.polygonscan.com/api",
           browserURL: "https://polygonscan.com/",
+        },
+      },
+      {
+        network: "berachainArtio",
+        chainId: 80085,
+        urls: {
+          apiURL:
+            "https://api.routescan.io/v2/network/testnet/evm/80085/etherscan/api",
+          browserURL: "https://artio.beratrail.io/",
+        },
+      },
+      {
+        network: "berachainBrtio",
+        chainId: 80084,
+        urls: {
+          apiURL:
+            "https://api.routescan.io/v2/network/testnet/evm/80084/etherscan/api",
+          browserURL: "https://bartio.beratrail.io/",
         },
       },
     ],

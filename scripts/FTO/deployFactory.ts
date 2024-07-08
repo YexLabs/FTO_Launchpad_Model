@@ -13,9 +13,11 @@ async function deployFTOFactory() {
   console.log("Deploying contracts with the account:", deployer.address);
   console.log("Account balance:", (await deployer.getBalance()).toString());
 
-  const FTOFactory = await ethers.getContractFactory("YexFTOFactory");
+  const FTOFactory = await ethers.getContractFactory("YexFTOFactoryV2");
   const ftoFactoryContract = await FTOFactory.deploy([]);
-  console.log(`FTOFactory contract deployed to ${ftoFactoryContract.address}`);
+  console.log(
+    `YexFTOFactoryV2 contract deployed to ${ftoFactoryContract.address}`
+  );
 
   await ftoFactoryContract.deployed();
 
@@ -26,14 +28,14 @@ async function deployFTOFactory() {
   console.log("INIT_HASH_CODE", await ftoFactoryContract.INIT_CODE_PAIR_HASH());
   const v1 = verify(
     ftoFactoryContract.address,
-    "contracts/core/YexFTOFactory.sol:YexFTOFactory",
+    "contracts/core/YexFTOFactoryV2.sol:YexFTOFactoryV2",
     []
   );
   await v1;
 
-  const setUpTx = await ftoFactoryContract.setNoWhiteList(true);
+  // const setUpTx = await ftoFactoryContract.setNoWhiteList(true);
 
-  await setUpTx.wait(6);
+  // await setUpTx.wait(6);
 
   return ftoFactoryContract.address;
 }
