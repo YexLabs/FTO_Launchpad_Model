@@ -8,9 +8,12 @@ import "../interfaces/IHenloDexFactory.sol";
 import "../interfaces/IHenloDexPair.sol";
 import "../interfaces/IYexFTOHook.sol";
 import "../libraries/TransferHelper.sol";
+import "../libraries/YexFTOHook.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract YexFTOPairV2 is IYexFTOPairV2 {
+    using YexFTOHook for IYexFTOHook;
+
     uint8 public feePercent = 5; // default is 5%
 
     address public raisedToken; // raisedToken is used to subscribe tokenB
@@ -43,7 +46,7 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
     mapping(address => bool) public claimedLaunchedToken;
 
     uint256 public percent4hook; // percentage for hook
-    address public hook;
+    IYexFTOHook public hook;
 
     error InvalidAmount();
     error InvalidUpdate();
@@ -87,15 +90,17 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
         launchPercent = _launchedTokenPercent;
         endTime = block.timestamp + raisingCycle;
         otherPool = _otherPool;
-        if (data.length > 0) {
+        if (data.length > 0 && IYexFTOHook(_launchedTokenProvider).isValidHookAddress()) {
             (uint256 _hookPercent, bytes memory _hookParams) = abi.decode(
                 data,
                 (uint256, bytes)
             );
-            hook = _launchedTokenProvider;
+            hook = IYexFTOHook(_launchedTokenProvider);
             percent4hook = _hookPercent;
 
-            IYexFTOHook(hook).execute(_hookParams);
+            if(hook.hasExecute()) {
+                IYexFTOHook(hook).execute(_hookParams);
+            }
         }
     }
 
@@ -294,11 +299,10 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
 
             FTOState = Status.Success;
 
-            // hook part
-            if (hook != address(0)) {
+            if (address(hook) != address(0) && hook.hasAfterAddLiquidity()) {
                 uint256 vestAmount = (_totalLP * percent4hook) / 100;
-                IERC20(pair).approve(hook, vestAmount);
-                IYexFTOHook(hook).afterAddLiquidity(
+                IERC20(pair).approve(address(hook), vestAmount);
+                hook.afterAddLiquidity(
                     address(this),
                     pair,
                     vestAmount
