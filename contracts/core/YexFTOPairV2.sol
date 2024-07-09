@@ -42,8 +42,6 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
     mapping(address => uint256) public claimedLp;
     mapping(address => bool) public claimedLaunchedToken;
 
-    address[] public raisedTokenDepositAddress;
-
     uint256 public percent4hook; // percentage for hook
     address public hook;
 
@@ -140,10 +138,6 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
         );
         if (raisedTokenBalance != amount + depositedRaisedToken) {
             revert InvalidUpdate();
-        }
-
-        if (raisedTokenDeposit[depositor] == 0) {
-            raisedTokenDepositAddress.push(depositor);
         }
 
         raisedTokenDeposit[depositor] = raisedTokenDeposit[depositor] + amount;
