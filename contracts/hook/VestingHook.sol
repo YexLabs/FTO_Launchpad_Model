@@ -187,4 +187,12 @@ abstract contract VestingHook is NormalHook {
                 duration(ftoPair);
         }
     }
+
+    function getFlags() public pure virtual override returns (YexFTOHook.Flags memory) {
+        return YexFTOHook.Flags({
+            execute: true,
+            afterAddLiquidity: true,
+            burnable: false
+        });
+    }
 }

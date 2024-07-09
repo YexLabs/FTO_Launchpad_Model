@@ -3,15 +3,20 @@ pragma solidity ^0.8.16;
 import "../interfaces/IYexFTOHook.sol";
 import "../interfaces/IYexFTOFactoryV2.sol";
 import "./../libraries/TransferHelper.sol";
+import "./../libraries/YexFTOHook.sol";
 
-contract NormalHook is IYexFTOHook {
+abstract contract NormalHook is IYexFTOHook {
     error NotImplemented();
 
     address public immutable ftoFactory;
 
     constructor(address _ftoFactory) {
         ftoFactory = _ftoFactory;
+
+        YexFTOHook.validateHookAddress(IYexFTOHook(address(this)), getFlags());
     }
+
+    function getFlags() public pure virtual returns (YexFTOHook.Flags memory);
 
     function createFTO(
         address raisedToken,

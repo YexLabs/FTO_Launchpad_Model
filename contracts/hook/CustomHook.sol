@@ -50,4 +50,12 @@ contract CustomHook is VestingHook, BurnableHook {
     ) public override(BurnableHook, NormalHook) {
         BurnableHook.claimLP(ftoPair, lpToken);
     }
+
+    function getFlags() public pure override(VestingHook, BurnableHook) returns (YexFTOHook.Flags memory) {
+        return YexFTOHook.Flags({
+            execute: true,
+            afterAddLiquidity: true,
+            burnable: true
+        });
+    }
 }
