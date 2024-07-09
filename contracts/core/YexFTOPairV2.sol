@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.16;
 
-import "../interfaces/IYexFTOPair.sol";
+import "../interfaces/IYexFTOPairV2.sol";
 import "../interfaces/IYexFTOFactoryV2.sol";
 import "../interfaces/IHenloDexRouterV1.sol";
 import "../interfaces/IHenloDexFactory.sol";
@@ -10,7 +10,7 @@ import "../interfaces/IYexFTOHook.sol";
 import "../libraries/TransferHelper.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-contract YexFTOPairV2 is IYexFTOPair {
+contract YexFTOPairV2 is IYexFTOPairV2 {
     uint8 public feePercent = 5; // default is 5%
 
     address public raisedToken; // raisedToken is used to subscribe tokenB
@@ -102,12 +102,12 @@ contract YexFTOPairV2 is IYexFTOPair {
     }
 
     function depositLaunchedToken(
-        address depositer,
+        address depositor,
         uint256 amount
     ) external override whenNotPaused {
         require(block.timestamp < endTime, "deposit: raising time is over");
         require(
-            depositer == launchedTokenProvider,
+            depositor == launchedTokenProvider,
             "only Project owner can deposit"
         );
         if (amount == 0) {
@@ -120,16 +120,16 @@ contract YexFTOPairV2 is IYexFTOPair {
             revert InvalidUpdate();
         }
         depositedLaunchedToken = depositedLaunchedToken + amount;
-        emit DepositLaunchedToken(depositer, amount);
+        emit DepositLaunchedToken(depositor, amount);
     }
 
     function depositRaisedToken(
-        address depositer,
+        address depositor,
         uint256 amount
     ) external override whenNotPaused {
         require(block.timestamp < endTime, "deposit: raising time is over");
         require(
-            depositer != launchedTokenProvider,
+            depositor != launchedTokenProvider,
             "Project owner are not allowed to deposit with their launch"
         );
         if (amount == 0) {
@@ -142,31 +142,31 @@ contract YexFTOPairV2 is IYexFTOPair {
             revert InvalidUpdate();
         }
 
-        if (raisedTokenDeposit[depositer] == 0) {
-            raisedTokenDepositAddress.push(depositer);
+        if (raisedTokenDeposit[depositor] == 0) {
+            raisedTokenDepositAddress.push(depositor);
         }
 
-        raisedTokenDeposit[depositer] = raisedTokenDeposit[depositer] + amount;
+        raisedTokenDeposit[depositor] = raisedTokenDeposit[depositor] + amount;
         depositedRaisedToken = depositedRaisedToken + amount;
 
         // update participations
-        IYexFTOFactoryV2(factory).addEvent(depositer, address(this));
+        IYexFTOFactoryV2(factory).addEvent(depositor, address(this));
 
-        emit DepositRaisedToken(depositer, amount);
+        emit DepositRaisedToken(depositor, amount);
     }
 
     function refundRaisedToken(
-        address depositer
+        address depositor
     ) external override lock whenPaused {
-        uint256 deposit_amount = raisedTokenDeposit[depositer];
+        uint256 deposit_amount = raisedTokenDeposit[depositor];
         require(deposit_amount > 0, "refundable amount is 0");
 
-        raisedTokenDeposit[depositer] = 0;
+        raisedTokenDeposit[depositor] = 0;
         depositedRaisedToken -= deposit_amount;
 
-        IERC20(raisedToken).transfer(depositer, deposit_amount);
+        IERC20(raisedToken).transfer(depositor, deposit_amount);
 
-        emit Refund(depositer, deposit_amount);
+        emit Refund(depositor, deposit_amount);
     }
 
     function withdraw(address withdrawer) external override lock {
@@ -242,10 +242,9 @@ contract YexFTOPairV2 is IYexFTOPair {
         require(!claimedLaunchedToken[claimer], "claimer has claimed.");
 
         uint256 amount = _calculateLaunchedTokenAmount(claimer);
+        require(amount > 0, "claim amount is too small.");
 
         claimedLaunchedToken[claimer] = true;
-
-        require(amount > 0, "claim amount is too small.");
 
         TransferHelper.safeTransfer(launchedToken, claimer, amount);
 
@@ -256,21 +255,15 @@ contract YexFTOPairV2 is IYexFTOPair {
         address claimer
     ) external view returns (uint256) {
         require(FTOState == Status.Success, "fund rasing not success.");
-        uint256 amount = _calculateLaunchedTokenAmount(claimer);
+        uint256 amount = claimedLaunchedToken[claimer] ? 0 : _calculateLaunchedTokenAmount(claimer);
         return amount;
     }
 
     function _calculateLaunchedTokenAmount(
         address caller
     ) internal view returns (uint256 amount) {
-        if (claimedLaunchedToken[caller]) {
-            return 0;
-        }
-
-        uint256 deposit_amount = raisedTokenDeposit[caller];
-
         amount =
-            (deposit_amount * poolLaunchedTokenAmount) /
+            (raisedTokenDeposit[caller] * poolLaunchedTokenAmount) /
             depositedRaisedToken;
     }
 

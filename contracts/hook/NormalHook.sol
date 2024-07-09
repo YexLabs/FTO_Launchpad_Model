@@ -47,15 +47,10 @@ contract NormalHook is IYexFTOHook {
     }
 
     function afterAddLiquidity(
-        address ftoPair,
-        address lpToken,
-        uint256 lpAmount
+        address /*ftoPair*/,
+        address /*lpToken*/,
+        uint256 /*lpAmount*/
     ) public virtual override {
-        TransferHelper.safeTransferFrom(
-            lpToken,
-            ftoPair,
-            address(this),
-            lpAmount
-        );
+        revert NotImplemented();
     }
 }

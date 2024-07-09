@@ -20,21 +20,21 @@ contract YexFTOFactoryV2 is IYexFTOFactoryV2, WhiteList {
     mapping(address => mapping(address => address)) public getPair;
     mapping(address => bool) public isRaisedToken;
 
-    function addEvent(address depositer, address ftoPair) external override {
+    function addEvent(address depositor, address ftoPair) external override {
         require(
-            IYexFTOPair(ftoPair).raisedTokenDeposit(depositer) != 0,
+            IYexFTOPairV2(ftoPair).raisedTokenDeposit(depositor) != 0,
             "Not participate in this rasing."
         );
-        if (events_map[depositer][ftoPair] == false) {
-            events_map[depositer][ftoPair] = true;
-            eventParticipants[depositer].push(ftoPair);
+        if (events_map[depositor][ftoPair] == false) {
+            events_map[depositor][ftoPair] = true;
+            eventParticipants[depositor].push(ftoPair);
         }
     }
 
     function events(
-        address depositer
+        address depositor
     ) external view override returns (address[] memory pairs) {
-        return eventParticipants[depositer];
+        return eventParticipants[depositor];
     }
 
     function addRaisedToken(address _raisedToken) external onlyOwner {
@@ -75,7 +75,7 @@ contract YexFTOFactoryV2 is IYexFTOFactoryV2, WhiteList {
 
         _launchedToken.mint(pair, amount);
 
-        IYexFTOPair(pair).depositLaunchedToken(msg.sender, amount);
+        IYexFTOPairV2(pair).depositLaunchedToken(msg.sender, amount);
     }
 
     function allPairsLength() external view override returns (uint) {
@@ -145,7 +145,7 @@ contract YexFTOFactoryV2 is IYexFTOFactoryV2, WhiteList {
         address launchedToken
     ) external override onlyOwner {
         address pair = getPair[raisedToken][launchedToken];
-        IYexFTOPair(pair).pause();
+        IYexFTOPairV2(pair).pause();
     }
 
     function resume(
@@ -153,7 +153,7 @@ contract YexFTOFactoryV2 is IYexFTOFactoryV2, WhiteList {
         address launchedToken
     ) external override onlyOwner {
         address pair = getPair[raisedToken][launchedToken];
-        IYexFTOPair(pair).resume();
+        IYexFTOPairV2(pair).resume();
     }
 
     function getFTOPairProvider(
@@ -161,7 +161,7 @@ contract YexFTOFactoryV2 is IYexFTOFactoryV2, WhiteList {
         address launchedToken
     ) public view returns (address provider) {
         address pair = getPair[raisedToken][launchedToken];
-        provider = IYexFTOPair(pair).launchedTokenProvider();
+        provider = IYexFTOPairV2(pair).launchedTokenProvider();
     }
 
     function withdrawFee(

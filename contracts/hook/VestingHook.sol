@@ -88,8 +88,13 @@ abstract contract VestingHook is NormalHook {
         address lpToken,
         uint256 lpAmount
     ) public virtual override onlyFTOPair {
-        super.afterAddLiquidity(ftoPair, lpToken, lpAmount);
         getPair[ftoPair].lpToken = lpToken;
+        TransferHelper.safeTransferFrom(
+            lpToken,
+            ftoPair,
+            address(this),
+            lpAmount
+        );
     }
 
     /**
