@@ -188,8 +188,8 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
     function claimLP(address claimer) external lock {
         require(FTOState == Status.Success, "fund rasing not success.");
         require(
-            claimer == launchedTokenProvider ||
-                raisedTokenDeposit[claimer] != 0,
+            raisedTokenDeposit[claimer] != 0 ||
+            (claimer == launchedTokenProvider && !hook.hasBurnable()),
             "only launched token provider or raised token depositer can claim."
         );
 
