@@ -36,8 +36,7 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
 
     // lp
     address public lpToken;
-    uint256 public providerClaimedLp;
-    uint256 public userClaimedLp;
+    uint256 public totalClaimedLp;
 
     Status public FTOState = Status.Processing;
 
@@ -184,6 +183,11 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
         emit Withdraw(withdrawer, withdraw_amount);
     }
 
+    function withdrawRaisedToken() external {
+        require(msg.sender == hook && hook.hasBurnable(), "YexFTOPair: FORBIDDEN");
+        _transferLP(msg.sender);
+    }
+
     /// @notice provider need direct call pair claimLP function.
     function claimLP(address claimer) external lock {
         require(FTOState == Status.Success, "fund rasing not success.");
@@ -193,22 +197,7 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
             "only launched token provider or raised token depositer can claim."
         );
 
-        uint256 lpAmount = _calculateLPAmount(claimer);
-        uint256 claimedAmount = claimedLp[claimer];
-        require(lpAmount > claimedAmount, "LP amount is too small.");
-
-        uint256 claimableAmount = lpAmount - claimedAmount;
-        claimedLp[claimer] = lpAmount;
-
-        if (claimer == launchedTokenProvider) {
-            providerClaimedLp += claimableAmount;
-        } else {
-            userClaimedLp += claimableAmount;
-        }
-
-        TransferHelper.safeTransfer(lpToken, claimer, claimableAmount);
-
-        emit ClaimLP(claimer, claimableAmount);
+        _transferLP(claimer);
     }
 
     function claimableLP(address claimer) external view returns (uint256) {
@@ -220,8 +209,7 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
     function _calculateLPAmount(
         address caller
     ) internal view returns (uint256 lpAmount) {
-        uint256 cumulativeLP = IERC20(lpToken).balanceOf(address(this)) +
-            (providerClaimedLp + userClaimedLp);
+        uint256 cumulativeLP = IERC20(lpToken).balanceOf(address(this)) + totalClaimedLp;
 
         lpAmount = cumulativeLP >> 1;
 
@@ -230,6 +218,20 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
                 (raisedTokenDeposit[caller] * lpAmount) /
                 depositedRaisedToken;
         }
+    }
+
+    function _transferLP(address to) private {
+        uint256 lpAmount = _calculateLPAmount(to);
+        uint256 claimedAmount = claimedLp[to];
+        require(lpAmount > claimedAmount, "LP amount is too small.");
+
+        uint256 claimableAmount = lpAmount - claimedAmount;
+        claimedLp[to] = lpAmount;
+
+        totalClaimedLp += claimableAmount;
+
+        TransferHelper.safeTransfer(lpToken, to, claimableAmount);
+        emit ClaimLP(to, claimableAmount);
     }
 
     function claimLaunchedToken(address claimer) external lock {
