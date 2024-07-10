@@ -7,8 +7,11 @@ import "./YexFTOLaunchToken.sol";
 import "../libraries/Ownable.sol";
 import "../interfaces/IYexFTOFactoryV2.sol";
 
+/// @title Factory that generates FTOPair
+/// @notice Creating Launch Token and FTO launchpad.
 contract YexFTOFactoryV2 is IYexFTOFactoryV2, WhiteList {
     address[] public allPairs;
+    /// @dev List of RaisedToken addresses allowed for fundraising in the FTO Launchpad
     address[] public raisedTokens;
 
     bytes32 public constant INIT_CODE_PAIR_HASH =
@@ -17,25 +20,32 @@ contract YexFTOFactoryV2 is IYexFTOFactoryV2, WhiteList {
     mapping(address => address[]) private eventParticipants;
     mapping(address => mapping(address => bool)) private events_map;
 
+    /// @dev [LaunchedToken][RaisedToken] => FTOPair address
     mapping(address => mapping(address => address)) public getPair;
     mapping(address => bool) public isRaisedToken;
 
-    function addEvent(address depositer, address ftoPair) external override {
+    /// @dev If a depositor participates in the FTO fundraising, add the FTOPair address to the eventParticipants[depositor] array.
+    /// This function is called by YexFTOPair contract after the depositor deposits RaisedToken in the FTOPair.
+    /// @param depositor Address of participants in the FTO fundraising
+    /// @param ftoPair Address of FTOPair
+    function addEvent(address depositor, address ftoPair) external override {
         require(
-            IYexFTOPair(ftoPair).raisedTokenDeposit(depositer) != 0,
+            IYexFTOPair(ftoPair).raisedTokenDeposit(depositor) != 0,
             "Not participate in this rasing."
         );
-        if (events_map[depositer][ftoPair] == false) {
-            events_map[depositer][ftoPair] = true;
-            eventParticipants[depositer].push(ftoPair);
+        if (events_map[depositor][ftoPair] == false) {
+            events_map[depositor][ftoPair] = true;
+            eventParticipants[depositor].push(ftoPair);
         }
     }
 
+    /// @notice Returns the list of FTOPairs that the depositor has participated in.
     function events(
-        address depositer
+        address depositor
     ) external view override returns (address[] memory pairs) {
-        return eventParticipants[depositer];
+        return eventParticipants[depositor];
     }
+
 
     function addRaisedToken(address _raisedToken) external onlyOwner {
         if (!isRaisedToken[_raisedToken]) {
@@ -45,6 +55,18 @@ contract YexFTOFactoryV2 is IYexFTOFactoryV2, WhiteList {
         }
     }
 
+    /// @notice Creates Launch Token and FTOPair
+    /// @dev This function can be called from the Token Launcher's EOA account or Hook contract.
+    /// Deploy the LaunchedToken, mint it, then create and initialize the FTOPair.
+    /// @param raisedToken Token address for investment in FTO fundraising
+    /// @param name The name of the LaunchedToken
+    /// @param symbol The symbol of the LaunchedToken
+    /// @param _amount The totalSupply of LaunchedToken, which is initially minted in its entirety
+    /// @param launchedTokenPercent The proportion of LaunchedToken added to the AMM Pool
+    /// @param poolHandler The router address of DEX
+    /// @param raisingCycle Fundraising period (in seconds)
+    /// @param data Data to be passed to the Hook; empty if LaunchPad does not use a hook
+    /// @return pair The address of the newly created FTO Pair
     function createFTO(
         address raisedToken,
         string calldata name,
@@ -55,14 +77,19 @@ contract YexFTOFactoryV2 is IYexFTOFactoryV2, WhiteList {
         uint256 raisingCycle,
         bytes calldata data
     ) external override onlyWhiteList returns (address pair) {
+        /**
+         * YexFTOFactory obtains the ROLE to mint LaunchedToken.
+         * msg.sender(Token launcher or hook) obtains the ROLE to burn LaunchedToken in his own account.
+         */
         YexFTOLaunchToken _launchedToken = new YexFTOLaunchToken(
             name,
             symbol,
             msg.sender
         );
-        uint256 amount = _amount; // mint _amount launchedToken
+        uint256 amount = _amount;
         address launchedToken = address(_launchedToken);
 
+        // Deploy and initialize FTOPair
         pair = _createPair(
             raisedToken,
             launchedToken,
@@ -73,8 +100,16 @@ contract YexFTOFactoryV2 is IYexFTOFactoryV2, WhiteList {
             data
         );
 
+        /**
+         * Only address(this) can mint.
+         * Mint an amount of LaunchedToken to address(this)
+         */
         _launchedToken.mint(pair, amount);
 
+        /**
+         * Transfer the entire minted amount of LaunchedToken to the FTOPair.
+         * msg.sender(Token launcher or hook)
+         */
         IYexFTOPair(pair).depositLaunchedToken(msg.sender, amount);
     }
 
@@ -86,6 +121,16 @@ contract YexFTOFactoryV2 is IYexFTOFactoryV2, WhiteList {
         return raisedTokens;
     }
 
+    /// @dev Deploy the FTOPair using create2 and call the [initialize] function of FTOPair to initialize it.
+    /// This function is called after the LaunchedToken is deployed.
+    /// @param raisedToken Token address for investment in FTO fundraising
+    /// @param launchedToken The address of LaunchedToken
+    /// @param launchedTokenProvider When not using a custom hook, the EOA account of the Token Launcher; when using a custom hook, the address of the hook
+    /// @param launchedTokenPercent The proportion of LaunchedToken added to the AMM Pool
+    /// @param swapHandler The router address of DEX
+    /// @param raisingCycle Fundraising period (in seconds)
+    /// @param data Data to be passed to the Hook; empty if LaunchPad does not use a hook
+    /// @return pair The address of the newly created FTO Pair
     function _createPair(
         address raisedToken,
         address launchedToken,
@@ -112,12 +157,22 @@ contract YexFTOFactoryV2 is IYexFTOFactoryV2, WhiteList {
         require(
             getPair[token0][token1] == address(0),
             "YexFTOFactory: PAIR_EXISTS"
-        ); // single check is sufficient
+        );
+
+        /**
+         * Deploy the FTOPair using create2
+         * The FTOPair address can be calculated using raisedToken and launchedToken
+         */
         bytes memory bytecode = type(YexFTOPairV2).creationCode;
         bytes32 salt = keccak256(abi.encodePacked(token0, token1));
         assembly {
             pair := create2(0, add(bytecode, 32), mload(bytecode), salt)
         }
+
+        /**
+         * Set the parameter values in the FTOPair contract.
+         * If using a CustomHook, send [data] to the hook in the FTOPair's [initialize]."
+         */
         YexFTOPairV2(pair).initialize(
             raisedToken,
             launchedToken,
@@ -128,9 +183,10 @@ contract YexFTOFactoryV2 is IYexFTOFactoryV2, WhiteList {
             data
         );
         getPair[token0][token1] = pair;
-        getPair[token1][token0] = pair; // populate mapping in the reverse direction
-        // init new pair
+        getPair[token1][token0] = pair;
+
         allPairs.push(pair);
+
         emit PairCreated(token0, token1, pair, allPairs.length);
 
         _afterCreatePair(pair);
@@ -140,6 +196,11 @@ contract YexFTOFactoryV2 is IYexFTOFactoryV2, WhiteList {
         // _registerAndPredictID(pair);
     }
 
+    /// @dev This function pauses the fundraising of the FTOPair.
+    /// Only the factory owner can call this function.
+    /// It can only be paused if the FTOPair status is Processing.
+    /// After calling this function, depositors can withdraw their RaisedToken invested in the FTOPair.
+    /// After calling this function, the token provider can withdraw all the LaunchedToken from the FTOPair.
     function pause(
         address raisedToken,
         address launchedToken
@@ -148,6 +209,9 @@ contract YexFTOFactoryV2 is IYexFTOFactoryV2, WhiteList {
         IYexFTOPair(pair).pause();
     }
 
+    /// @dev This function resumes the fundraising status of the FTOPair that was paused.
+    /// Only the factory owner can call this function.
+    /// It can only be resumed if the FTOPair status is Paused.
     function resume(
         address raisedToken,
         address launchedToken
@@ -164,6 +228,9 @@ contract YexFTOFactoryV2 is IYexFTOFactoryV2, WhiteList {
         provider = IYexFTOPair(pair).launchedTokenProvider();
     }
 
+    /// @notice Withdraws the accumulated LPToken received as a fee from the FTOPair.
+    /// @dev This function withdraws the LPToken received as a fee from the FTOPair after a successful fundraising in the FTOPair Launchpad.
+    /// Only the factory owner can call this function, and the ftoPair must be specified with [raisedToken, launchedToken].
     function withdrawFee(
         address raisedToken,
         address launchedToken,
