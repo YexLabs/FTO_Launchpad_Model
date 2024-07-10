@@ -12,7 +12,7 @@ import "../libraries/YexFTOHook.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract YexFTOPairV2 is IYexFTOPairV2 {
-    using YexFTOHook for IYexFTOHook;
+    using YexFTOHook for address;
 
     uint8 public feePercent = 5; // default is 5%
 
@@ -46,7 +46,7 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
     mapping(address => bool) public claimedLaunchedToken;
 
     uint256 public percent4hook; // percentage for hook
-    IYexFTOHook public hook;
+    address public hook;
 
     error InvalidAmount();
     error InvalidUpdate();
@@ -90,12 +90,12 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
         launchPercent = _launchedTokenPercent;
         endTime = block.timestamp + raisingCycle;
         otherPool = _otherPool;
-        if (data.length > 0 && IYexFTOHook(_launchedTokenProvider).isValidHookAddress()) {
+        if (data.length > 0 && _launchedTokenProvider.isValidHookAddress()) {
             (uint256 _hookPercent, bytes memory _hookParams) = abi.decode(
                 data,
                 (uint256, bytes)
             );
-            hook = IYexFTOHook(_launchedTokenProvider);
+            hook = _launchedTokenProvider;
             percent4hook = _hookPercent;
 
             if(hook.hasExecute()) {
@@ -299,10 +299,10 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
 
             FTOState = Status.Success;
 
-            if (address(hook) != address(0) && hook.hasAfterAddLiquidity()) {
+            if (hook != address(0) && hook.hasAfterAddLiquidity()) {
                 uint256 vestAmount = (_totalLP * percent4hook) / 100;
-                IERC20(pair).approve(address(hook), vestAmount);
-                hook.afterAddLiquidity(
+                IERC20(pair).approve(hook, vestAmount);
+                IYexFTOHook(hook).afterAddLiquidity(
                     address(this),
                     pair,
                     vestAmount

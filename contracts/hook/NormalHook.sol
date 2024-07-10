@@ -13,7 +13,7 @@ abstract contract NormalHook is IYexFTOHook {
     constructor(address _ftoFactory) {
         ftoFactory = _ftoFactory;
 
-        YexFTOHook.validateHookAddress(IYexFTOHook(address(this)), getFlags());
+        YexFTOHook.validateHookAddress(address(this), getFlags());
     }
 
     function getFlags() public pure virtual returns (YexFTOHook.Flags memory);
