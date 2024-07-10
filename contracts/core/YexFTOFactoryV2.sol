@@ -171,7 +171,7 @@ contract YexFTOFactoryV2 is IYexFTOFactoryV2, WhiteList {
 
         /**
          * Set the parameter values in the FTOPair contract.
-         * If using a CustomHook, send [data] to the hook in the FTOPair's [initialize]."
+         * If using a CustomHook, send [data] to the hook in the FTOPair's [initialize].
          */
         YexFTOPairV2(pair).initialize(
             raisedToken,
