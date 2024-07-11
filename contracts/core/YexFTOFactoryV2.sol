@@ -56,7 +56,7 @@ contract YexFTOFactoryV2 is IYexFTOFactoryV2, WhiteList {
     }
 
     /// @notice Creates Launch Token and FTOPair
-    /// @dev This function can be called from the Token Launcher's EOA account or Hook contract.
+    /// @dev This function can be called from the Token Launcher's address or Hook contract.
     /// Deploy the LaunchedToken, mint it, then create and initialize the FTOPair.
     /// @param raisedToken Token address for investment in FTO fundraising
     /// @param name The name of the LaunchedToken
@@ -125,8 +125,8 @@ contract YexFTOFactoryV2 is IYexFTOFactoryV2, WhiteList {
     /// This function is called after the LaunchedToken is deployed.
     /// @param raisedToken Token address for investment in FTO fundraising
     /// @param launchedToken The address of LaunchedToken
-    /// @param launchedTokenProvider When not using a custom hook, the EOA account of the Token Launcher; when using a custom hook, the address of the hook
-    /// @param launchedTokenPercent The proportion of LaunchedToken added to the AMM Pool
+    /// @param launchedTokenProvider When not using a custom hook, the address of the Token Launcher; when using a custom hook, the address of the hook contract
+    /// @param launchedTokenPercent The proportion of LaunchedToken added to the DEX Pool
     /// @param swapHandler The router address of DEX
     /// @param raisingCycle Fundraising period (in seconds)
     /// @param data Data to be passed to the Hook; empty if LaunchPad does not use a hook

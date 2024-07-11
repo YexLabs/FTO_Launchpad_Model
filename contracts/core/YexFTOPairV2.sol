@@ -112,7 +112,15 @@ contract YexFTOPairV2 is IYexFTOPair {
         factory = msg.sender;
     }
 
-    // called once by the factory at time of deployment
+    /// @dev This function performs the initial setup for the FTOPair.
+    /// This function can only be called by the FTOFactory and is called only once at the time of FTOPair deployment.
+    /// @param _raisedToken Token address for investment in FTO fundraising
+    /// @param _launchedToken The address of LaunchedToken
+    /// @param _launchedTokenProvider When not using a custom hook, the address of the Token Launcher; when using a custom hook, the address of the hook contract
+    /// @param _launchedTokenPercent The proportion of LaunchedToken added to the DEX Pool
+    /// @param _otherPool The router address of DEX
+    /// @param raisingCycle Fundraising period (in seconds)
+    /// @param data Data to be passed to the hook contract; empty if FTO does not use a custom hook
     function initialize(
         address _raisedToken,
         address _launchedToken,
@@ -122,14 +130,25 @@ contract YexFTOPairV2 is IYexFTOPair {
         uint256 raisingCycle,
         bytes calldata data
     ) external {
-        require(msg.sender == factory, "YexFTOPair: FORBIDDEN"); // sufficient check
+        // This function reverts if the caller is not the FTOFactory.
+        require(msg.sender == factory, "YexFTOPair: FORBIDDEN");
+
         raisedToken = _raisedToken;
         launchedToken = _launchedToken;
         launchedTokenProvider = _launchedTokenProvider;
         launchPercent = _launchedTokenPercent;
+
+        // Calculates the end time of the FTO fundraising.
         endTime = block.timestamp + raisingCycle;
+
         otherPool = _otherPool;
+
+        // When data is not empty, it is assumed that _launchedTokenProvider is a hook.
         if (data.length > 0) {
+            /**
+             * _hookPercent: The percentage of LP tokens that are vested in hook contract
+             * _hookParams: Data passed to the hook contract.
+             */
             (uint256 _hookPercent, bytes memory _hookParams) = abi.decode(
                 data,
                 (uint256, bytes)
@@ -137,17 +156,22 @@ contract YexFTOPairV2 is IYexFTOPair {
             hook = _launchedTokenProvider;
             percent4hook = _hookPercent;
 
+            /**
+             * If the hook provides vesting functionality,
+             *      _hookParams contains vesting info,
+             *      and the [execute] function records the vesting for this FTOPair in the hook.
+             */
             IYexFTOHook(hook).execute(_hookParams);
         }
     }
 
     function depositLaunchedToken(
-        address depositer,
+        address depositor,
         uint256 amount
     ) external override whenNotPaused {
         require(block.timestamp < endTime, "deposit: raising time is over");
         require(
-            depositer == launchedTokenProvider,
+            depositor == launchedTokenProvider,
             "only Project owner can deposit"
         );
         if (amount == 0) {
@@ -160,7 +184,7 @@ contract YexFTOPairV2 is IYexFTOPair {
             revert InvalidUpdate();
         }
         depositedLaunchedToken = depositedLaunchedToken + amount;
-        emit DepositLaunchedToken(depositer, amount);
+        emit DepositLaunchedToken(depositor, amount);
     }
 
     function depositRaisedToken(
