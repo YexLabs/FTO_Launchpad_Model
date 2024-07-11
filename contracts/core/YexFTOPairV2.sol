@@ -332,20 +332,43 @@ contract YexFTOPairV2 is IYexFTOPair {
         emit ClaimLP(claimer, claimableAmount);
     }
 
+    /// @dev Calculates the amount of LP tokens the [claimer] can claim at the current time.
+    /// This value is calculated by subtracting the already claimed amount from lpAmount.
+    /// @return The amount of LP tokens the claimer can claim at the current time.
     function claimableLP(address claimer) external view returns (uint256) {
         require(FTOState == Status.Success, "fund rasing not success.");
         uint256 lpAmount = _calculateLPAmount(claimer);
         return lpAmount - claimedLp[claimer];
     }
 
+    /// @dev Calculates the total amount of LP tokens the [claimer] can claim from the FTOPair.
+    /// This value includes the amount already claimed.
+    /// @param caller address of claimer
+    /// @return lpAmount The total amount of LP tokens the claimer can claim.
     function _calculateLPAmount(
         address caller
     ) internal view returns (uint256 lpAmount) {
+        /**
+         * Calculates the total accumulated amount of LP tokens up to the current time.
+         * providerClaimedLp + userClaimedLp: The total amount of LP tokens already claimed.
+         * The reason for calculating cumulativeLP each time is that the balance of address(this)
+         *  may change as vested LP tokens are released and sent back to the FTOPair.
+         */
         uint256 cumulativeLP = IERC20(lpToken).balanceOf(address(this)) +
             (providerClaimedLp + userClaimedLp);
 
+        /**
+         * lpAmount = cumulativeLP / 2;
+         * If the claimer is the launchedTokenProvider, they can claim 50% of the total LP tokens.
+         * The launchedTokenProvider holds a 50% share.
+         */
         lpAmount = cumulativeLP >> 1;
 
+        /**
+         * If the claimer is a common depositor and not the launchedTokenProvider,
+         *  they can claim their proportional share of the remaining 50% of LP tokens.
+         * The depositor's share is calculated as raisedTokenDeposit[caller] / depositedRaisedToken.
+         */
         if (launchedTokenProvider != caller) {
             lpAmount =
                 (raisedTokenDeposit[caller] * lpAmount) /
@@ -353,6 +376,9 @@ contract YexFTOPairV2 is IYexFTOPair {
         }
     }
 
+    /// @dev This function claims the remaining LaunchedToken in the FTOPair after successful fundraising.
+    /// The remaining LaunchedToken in the FTOPair is provided as a reward to RaisedToken depositors in the FTO.
+    /// @param claimer Address of the RaisedToken depositor
     function claimLaunchedToken(address claimer) external lock {
         require(FTOState == Status.Success, "fund rasing not success.");
         require(
@@ -361,6 +387,7 @@ contract YexFTOPairV2 is IYexFTOPair {
         );
         require(!claimedLaunchedToken[claimer], "claimer has claimed.");
 
+        // Calculates the amount of LaunchedToken the claimer can claim as a reward.
         uint256 amount = _calculateLaunchedTokenAmount(claimer);
 
         claimedLaunchedToken[claimer] = true;
@@ -372,6 +399,7 @@ contract YexFTOPairV2 is IYexFTOPair {
         emit ClaimLaunchedToken(claimer, amount);
     }
 
+    /// @dev This function returns the amount of LaunchedToken that the [claimer] can claim.
     function claimableLaunchedToken(
         address claimer
     ) external view returns (uint256) {
@@ -380,6 +408,8 @@ contract YexFTOPairV2 is IYexFTOPair {
         return amount;
     }
 
+    /// @dev Calculates the amount of LaunchedToken the [claimer] can claim as a reward.
+    /// If already claimed, the amount is calculated as 0.
     function _calculateLaunchedTokenAmount(
         address caller
     ) internal view returns (uint256 amount) {
@@ -389,18 +419,33 @@ contract YexFTOPairV2 is IYexFTOPair {
 
         uint256 deposit_amount = raisedTokenDeposit[caller];
 
+        /**
+         * The amount is calculated in proportion to the [claimer]'s share.
+         * poolLaunchedTokenAmount is the initial amount of LaunchedToken provided as a reward in the FTO.
+         */
         amount =
             (deposit_amount * poolLaunchedTokenAmount) /
             depositedRaisedToken;
     }
 
+    /// @dev This function supplies liquidity to the Dex pool using the accumulated LaunchedToken and RaisedToken
+    ///  in the FTO at the end of the fundraising period.
+    /// If there are no accumulated RaisedToken at the end of the fundraising period, the FTO status becomes Failed.
     function _perform() internal {
         if (depositedRaisedToken != 0) {
-            // rasing success
-            // addLiquidity
+            /**
+             * launchAmount is the actual amount of LaunchedToken to be supplied to the Dex pool.
+             * It is calculated based on launchPercent.
+             */
             uint256 launchAmount = (depositedLaunchedToken * launchPercent) /
                 100;
+            /**
+             * poolLaunchedTokenAmount is the amount of LaunchedToken remaining after being supplied to the Dex pool.
+             * The remaining tokens are provided as a reward to the depositors.
+             */
             poolLaunchedTokenAmount = depositedLaunchedToken - launchAmount;
+
+            // The code section for adding liquidity to HenloDex
             IERC20(raisedToken).approve(otherPool, depositedRaisedToken);
             IERC20(launchedToken).approve(otherPool, launchAmount);
             (, , uint liquidity) = IHenloDexRouterV1(otherPool).addLiquidity(
@@ -414,6 +459,7 @@ contract YexFTOPairV2 is IYexFTOPair {
                 block.timestamp + 100
             );
 
+            // The code section for getting the address of the LP token received after supplying liquidity.
             address poolFactory = IHenloDexRouterV1(otherPool).factory();
             address pair = IHenloDexFactory(poolFactory).getPair(
                 raisedToken,
@@ -421,14 +467,22 @@ contract YexFTOPairV2 is IYexFTOPair {
             );
             lpToken = pair;
 
-            // send fee to factory
-            uint256 _totalLP = (liquidity * (100 - feePercent)) / 100; // fee percent is 5%
+            /**
+             * _totalLP is the value of the total LP tokens excluding the fee that must be sent to the FTOFactory.
+             * Transfer the LP tokens corresponding to the feePercent to the FTOFactory as a fee.
+             */
+            uint256 _totalLP = (liquidity * (100 - feePercent)) / 100;
             TransferHelper.safeTransfer(pair, factory, liquidity - _totalLP);
 
             FTOState = Status.Success;
 
-            // hook part
+            // Handling part for when the FTO uses a custom hook
             if (hook != address(0)) {
+                /**
+                 * Integration part with the Vesting Hook
+                 * vestAmount is the amount of LP tokens to be vested in the hook.
+                 * Approve the hook contract to transfer the calculated vestAmount.
+                 */
                 uint256 vestAmount = (_totalLP * percent4hook) / 100;
                 IERC20(pair).approve(hook, vestAmount);
                 IYexFTOHook(hook).afterAddLiquidity(
@@ -442,10 +496,14 @@ contract YexFTOPairV2 is IYexFTOPair {
         }
     }
 
+    /// @dev Check if the fundraising end time has passed and if the FTO status is not Paused.
+    /// This function checks whether the _perform function can be executed.
     function _isUpkeepNeeded() internal view returns (bool) {
         return block.timestamp > endTime && FTOState == Status.Processing;
     }
 
+    /// @dev Returns the result of the _isUpkeepNeeded() function.
+    /// Off-chain, this function is used to determine whether to call the [performUpkeep] function.
     function checkUpkeep(
         bytes calldata /* checkData */
     )
@@ -458,11 +516,17 @@ contract YexFTOPairV2 is IYexFTOPair {
         performData = "";
     }
 
+    /// @dev This is an external function that executes the _perform() function.
+    /// Within the function, it performs an additional check of _isUpkeepNeeded().
+    /// If _isUpkeepNeeded() returns true, it executes the _perform() function.
+    /// This function is a permissionless function that anyone can execute.
     function performUpkeep(bytes calldata) external override {
         require(_isUpkeepNeeded(), "fund raising not finished or paused");
         _perform();
     }
 
+    /// @dev Changes the status of the FTO to Paused.
+    /// This function can only be called by the FTOFactory.
     function pause() external override {
         require(msg.sender == factory, "only factory can pause");
         require(FTOState == Status.Processing, "Launchpad is not in progress");
@@ -470,6 +534,8 @@ contract YexFTOPairV2 is IYexFTOPair {
         emit Paused(block.timestamp);
     }
 
+    /// @dev Resumes the status of the FTO that was Paused.
+    /// This function can only be called by the FTOFactory.
     function resume() external override {
         require(msg.sender == factory, "only factory can resume");
         require(
