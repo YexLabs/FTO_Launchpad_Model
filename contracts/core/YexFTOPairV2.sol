@@ -190,13 +190,18 @@ contract YexFTOPairV2 is IYexFTOPair {
         emit DepositLaunchedToken(depositor, amount);
     }
 
+    /// @dev Function called after depositors deposit RaisedToken into the FTOPair
+    /// This function will not revert if the following conditions are met:
+    ///  1. The depositor first transfers the amount of RaisedToken to address(this).
+    ///  2. After [1] is completed, this function is called with the depositor and amount as parameters.
+    ///  3. The FTO status must be [Processing] and it must be during the fundraising period.
     function depositRaisedToken(
-        address depositer,
+        address depositor,
         uint256 amount
     ) external override whenNotPaused {
         require(block.timestamp < endTime, "deposit: raising time is over");
         require(
-            depositer != launchedTokenProvider,
+            depositor != launchedTokenProvider,
             "Project owner are not allowed to deposit with their launch"
         );
         if (amount == 0) {
@@ -205,21 +210,37 @@ contract YexFTOPairV2 is IYexFTOPair {
         uint256 raisedTokenBalance = IERC20(raisedToken).balanceOf(
             address(this)
         );
+
+        /**
+         * This function will revert
+         * if the depositor has not transferred [amount] of RaisedToken to address(this) before calling it.
+         */
         if (raisedTokenBalance != amount + depositedRaisedToken) {
             revert InvalidUpdate();
         }
 
-        if (raisedTokenDeposit[depositer] == 0) {
-            raisedTokenDepositAddress.push(depositer);
+        /**
+         * If the depositor is depositing RaisedToken for the first time,
+         * add it to the depositor list of the FTOPair.
+         */
+        if (raisedTokenDeposit[depositor] == 0) {
+            raisedTokenDepositAddress.push(depositor);
         }
 
-        raisedTokenDeposit[depositer] = raisedTokenDeposit[depositer] + amount;
+        /**
+         * Update the depositor's RaisedToken deposit amount
+         *  and the total amount of RaisedToken deposited in the FTOPair.
+         */
+        raisedTokenDeposit[depositor] = raisedTokenDeposit[depositor] + amount;
         depositedRaisedToken = depositedRaisedToken + amount;
 
-        // update participations
-        IYexFTOFactoryV2(factory).addEvent(depositer, address(this));
+        /**
+         * The addEvent function in the FTOFactory updates the storage variable
+         *  to reflect that the depositor has participated in this FTOPair.
+         */
+        IYexFTOFactoryV2(factory).addEvent(depositor, address(this));
 
-        emit DepositRaisedToken(depositer, amount);
+        emit DepositRaisedToken(depositor, amount);
     }
 
     function refundRaisedToken(

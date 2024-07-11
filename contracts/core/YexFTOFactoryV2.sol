@@ -26,7 +26,7 @@ contract YexFTOFactoryV2 is IYexFTOFactoryV2, WhiteList {
 
     /// @dev If a depositor participates in the FTO fundraising, add the FTOPair address to the eventParticipants[depositor] array.
     /// This function is called by YexFTOPair contract after the depositor deposits RaisedToken in the FTOPair.
-    /// @param depositor Address of participants in the FTO fundraising
+    /// @param depositor Address of participant in the FTO fundraising
     /// @param ftoPair Address of FTOPair
     function addEvent(address depositor, address ftoPair) external override {
         require(
