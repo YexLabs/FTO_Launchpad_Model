@@ -285,22 +285,42 @@ contract YexFTOPairV2 is IYexFTOPair {
         emit Withdraw(withdrawer, withdraw_amount);
     }
 
-    /// @notice provider need direct call pair claimLP function.
+    /// @dev Function that allows the [claimer] to claim LP tokens
+    /// The amount the [claimer] can claim is calculated within the function.
+    /// This function can only be called after the fundraising is completed,
+    ///   liquidity has been added to the Dex pool, and the FTO status is set to Success.
+    /// @param claimer The address claiming the LP tokens; the address receiving the LP tokens
     function claimLP(address claimer) external lock {
         require(FTOState == Status.Success, "fund rasing not success.");
+        /**
+         * The [claimer] must be either the launchedTokenProvider
+         *  or a depositor who deposited RaisedToken.
+         */
         require(
             claimer == launchedTokenProvider ||
                 raisedTokenDeposit[claimer] != 0,
             "only launched token provider or raised token depositer can claim."
         );
 
+        /**
+         * lpAmount is the amount of LP tokens the claimer can claim.
+         * lpAmount includes the LP tokens the claimer has already claimed.
+         * Therefore, the condition lpAmount > claimedAmount must be satisfied.
+         */
         uint256 lpAmount = _calculateLPAmount(claimer);
         uint256 claimedAmount = claimedLp[claimer];
         require(lpAmount > claimedAmount, "LP amount is too small.");
 
+        // claimableAmount is the actual amount of LP tokens being claimed by the claimer.
         uint256 claimableAmount = lpAmount - claimedAmount;
+
+        // At this point, the amount of LP tokens claimed by the claimer becomes lpAmount.
         claimedLp[claimer] = lpAmount;
 
+        /**
+         * Update the claimed amount in different tracking state variables
+         *  depending on whether the claimer is the launchedTokenProvider or a common depositor.
+         */
         if (claimer == launchedTokenProvider) {
             providerClaimedLp += claimableAmount;
         } else {
