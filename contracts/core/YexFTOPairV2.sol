@@ -243,21 +243,32 @@ contract YexFTOPairV2 is IYexFTOPair {
         emit DepositRaisedToken(depositor, amount);
     }
 
+    /// @dev Transfer the entire amount of RaisedToken deposited back to the depositor's address.
+    /// Can only be called if the FTO status is [Paused].
+    /// @param depositor Address of the depositor who requested a refund of RaisedToken.
     function refundRaisedToken(
-        address depositer
+        address depositor
     ) external override lock whenPaused {
-        uint256 deposit_amount = raisedTokenDeposit[depositer];
+        // Verify that the depositor is a valid address that had deposited RaisedToken.
+        uint256 deposit_amount = raisedTokenDeposit[depositor];
         require(deposit_amount > 0, "refundable amount is 0");
 
-        raisedTokenDeposit[depositer] = 0;
+        raisedTokenDeposit[depositor] = 0;
         depositedRaisedToken -= deposit_amount;
 
-        IERC20(raisedToken).transfer(depositer, deposit_amount);
+        IERC20(raisedToken).transfer(depositor, deposit_amount);
 
-        emit Refund(depositer, deposit_amount);
+        emit Refund(depositor, deposit_amount);
     }
 
+    /// @dev Transfer all LaunchedToken in the FTOPair to the [withdrawer] address.
+    /// @param withdrawer The address to receive the withdrawn LaunchedToken; This must be launchedTokenProvider
     function withdraw(address withdrawer) external override lock {
+        /**
+         * Can only be called if the FTO status is Failed or Paused.
+         * If there are no RaisedToken deposits at the end of the fundraising period,
+         *  the FTO status becomes Failed.
+         */
         require(
             FTOState == Status.Failed || FTOState == Status.Paused,
             "fund raising has already concluded"
@@ -266,6 +277,7 @@ contract YexFTOPairV2 is IYexFTOPair {
             launchedTokenProvider == withdrawer,
             "only provider can withdraw"
         );
+
         uint256 withdraw_amount = depositedLaunchedToken;
         depositedLaunchedToken = 0;
 
