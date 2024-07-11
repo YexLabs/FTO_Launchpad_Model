@@ -10,41 +10,81 @@ import "../interfaces/IYexFTOHook.sol";
 import "../libraries/TransferHelper.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+/// @title Contract that manages the FTO Launchpad
+/// @notice Created from the FTO Factory contract
+/// @dev This contract address is uniquely determined by the RaisedToken and LaunchedToken.
 contract YexFTOPairV2 is IYexFTOPair {
-    uint8 public feePercent = 5; // default is 5%
+    /// @dev The percentage of LP tokens received after adding liquidity to the AMM Pool that is paid to the Factory as a fee
+    /// The decimal for feePercent is 0.
+    uint8 public feePercent = 5;
 
-    address public raisedToken; // raisedToken is used to subscribe tokenB
-    address public launchedToken; // launchedToken is the issuer
+    /// @dev Address of Raised Token
+    /// This value is set when the initialize function is called by the FTOFactory and does not change once set.
+    address public raisedToken;
+    /// @dev Address of Launched Token
+    /// This value is set when the initialize function is called by the FTOFactory and does not change once set.
+    address public launchedToken;
 
-    uint256 public poolLaunchedTokenAmount; // default is 0;
+    /// @dev The amount of Launched Token to be provided as a reward to depositors
+    /// poolLaunchedTokenAmount = depositedLaunchedToken * (100 - launchPercent) / 100
+    uint256 public poolLaunchedTokenAmount;
 
+    /// @dev The entity that created the FTO Launchpad
+    /// The address of the Token Launcher if CustomHook is not used,
+    /// or the hook address if CustomHook is used.
     address public launchedTokenProvider;
-    uint256 public launchPercent = 100; // launch percentage defaults to 100
+    /// @dev The amount of LaunchedToken added as liquidity to the AMM Pool, excluding the amount provided as a reward to depositors
+    /// rewardPercent = 100 - launchPercent
+    /// launchPercent defaults to 100%
+    uint256 public launchPercent = 100;
 
+    /// @dev The amount of RaisedToken deposited to address(this): FTOPair
     uint256 public depositedRaisedToken;
+    /// @dev The amount of LaunchedToken in the address(this): FTOPair
     uint256 public depositedLaunchedToken;
 
+    /// @dev The address of YexFTOFactory contract
     address public immutable factory;
 
+    /// @dev The time when the fundraising for the FTO begins
+    /// Fundraising begins immediately upon the creation of the FTOPair contract.
     uint256 public startTime = block.timestamp;
+    /// @dev The time when the fundraising for the FTO ends
+    /// It is set in the initialize function.
     uint256 public endTime;
 
+    /// @dev The address of HenloDexRouter
     address public otherPool;
 
-    // lp
+    /// @dev The address of the LP tokens received after adding liquidity to HenloDex
     address public lpToken;
+    /// @dev The amount of LP tokens claimed by the Token Provider
+    /// The Token Provider can claim 50% of the LP tokens.
     uint256 public providerClaimedLp;
+    /// @dev The total amount of LP tokens claimed by depositors
+    /// Depositors can claim from 50% of the LP tokens in proportion to their share of the deposited RaisedToken.
     uint256 public userClaimedLp;
 
+    /// @dev Indicates the status of the FTO. The status can be [Processing], [Paused], [Success], or [Failed].
     Status public FTOState = Status.Processing;
 
+    /// @dev The amount of RaisedToken deposited by each depositor
+    /// It is used to calculate the share of each depositor.
     mapping(address => uint256) public raisedTokenDeposit;
+    /// @dev The amount of LP tokens claimed by each user.
+    /// A user can be either a depositor or a token provider.
     mapping(address => uint256) public claimedLp;
+    /// @dev Indicates whether each depositor has claimed the LaunchedToken allocated as a reward
     mapping(address => bool) public claimedLaunchedToken;
 
+    /// @dev List of depositors
     address[] public raisedTokenDepositAddress;
 
-    uint256 public percent4hook; // percentage for hook
+    /// @dev The percentage of LP tokens that are vested in hook contract if the FTO uses a vesting hook.
+    /// It is set in the initialize function, and the decimal is 0.
+    uint256 public percent4hook;
+    /// @dev The address of the hook contract if the FTO uses a custom hook
+    /// The hook is initially set in the initialize function.
     address public hook;
 
     error InvalidAmount();
