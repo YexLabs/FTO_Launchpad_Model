@@ -153,6 +153,8 @@ contract YexFTOPairV2 is IYexFTOPair {
                 data,
                 (uint256, bytes)
             );
+
+            // Future updates: Need to verify if _launchedTokenProvider is indeed a hook contract.
             hook = _launchedTokenProvider;
             percent4hook = _hookPercent;
 
@@ -160,6 +162,7 @@ contract YexFTOPairV2 is IYexFTOPair {
              * If the hook provides vesting functionality,
              *      _hookParams contains vesting info,
              *      and the [execute] function records the vesting for this FTOPair in the hook.
+             * Future updates: Need to check if the hook contract supports the [execute] function.
              */
             IYexFTOHook(hook).execute(_hookParams);
         }
