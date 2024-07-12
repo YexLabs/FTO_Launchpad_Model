@@ -46,12 +46,26 @@ contract YexFTOFactoryV2 is IYexFTOFactoryV2, WhiteList {
         return eventParticipants[depositor];
     }
 
-
+    /// @notice Add raisedToken
+    /// @dev This function add a new token used for investment.
+    /// Only the factory owner can call this function.
+    /// @param _raisedToken Token address for investment in FTO fundraising
     function addRaisedToken(address _raisedToken) external onlyOwner {
         if (!isRaisedToken[_raisedToken]) {
             raisedTokens.push(_raisedToken);
             isRaisedToken[_raisedToken] = true;
             emit RaisedTokenAdded(_raisedToken);
+        }
+    }
+
+    /// @notice Remove raisedToken
+    /// @dev This function remove a token used for investment.
+    /// Only the factory owner can call this function.
+    /// @param _raisedToken Token address for investment in FTO fundraising
+    function removeRaisedToken(address _raisedToken) external onlyOwner {
+        if (isRaisedToken[_raisedToken]) {
+            isRaisedToken[_raisedToken] = false;
+            emit RaisedTokenRemoved(_raisedToken);
         }
     }
 

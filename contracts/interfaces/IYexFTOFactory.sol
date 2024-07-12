@@ -11,6 +11,8 @@ interface IYexFTOFactory {
 
     event RaisedTokenAdded(address indexed token);
 
+    event RaisedTokenRemoved(address indexed token);
+
     function getPair(
         address raisedToken,
         address launchedToken
