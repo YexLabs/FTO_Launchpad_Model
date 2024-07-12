@@ -8,6 +8,8 @@ import "../libraries/YexFTOLibrary.sol";
 import "../libraries/TransferHelper.sol";
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/MerkleProofUpgradeable.sol";
 
+/// @title YexFTOFacade
+/// @notice The contract that directly interacts with the users.
 contract YexFTOFacade is IYexFTOFacade, Ownable {
     address public immutable override factory;
 
@@ -15,6 +17,7 @@ contract YexFTOFacade is IYexFTOFacade, Ownable {
         factory = _factory;
     }
 
+    /// @notice This function returns the FTOPair address derived from the raisedToken and launchedToken.
     function getFTOPair(
         address raisedToken,
         address launchedToken
@@ -22,6 +25,9 @@ contract YexFTOFacade is IYexFTOFacade, Ownable {
         pair = YexFTOLibrary.pairFor(factory, raisedToken, launchedToken);
     }
 
+    /// @notice This function returns the address of the token launcher or the hook for the FTO.
+    /// @param raisedToken the address of Raised Token
+    /// @param launchedToken the address of Launched Token
     function getFTOPairProvider(
         address raisedToken,
         address launchedToken
@@ -34,6 +40,7 @@ contract YexFTOFacade is IYexFTOFacade, Ownable {
         provider = IYexFTOPair(pair).launchedTokenProvider();
     }
 
+    /// @notice Allows you to get the fundraising status of the FTO.
     function getFTOState(
         address raisedToken,
         address launchedToken
@@ -46,6 +53,11 @@ contract YexFTOFacade is IYexFTOFacade, Ownable {
         state = uint256(IYexFTOPair(pair).FTOState());
     }
 
+    /// @notice Allows you to deposit RaisedToken or LaunchedToken into the FTO.
+    /// @param raisedToken the address of Raised Token
+    /// @param launchedToken the address of Launched Token
+    /// @param raisedTokenAmount Amount of Raised Token to be deposited
+    /// @param launchedTokenAmount Amount of Launched Token to be deposited
     function deposit(
         address raisedToken,
         address launchedToken,
@@ -60,6 +72,8 @@ contract YexFTOFacade is IYexFTOFacade, Ownable {
         );
     }
 
+    /// @dev This function withdraws LaunchedToken from the FTO.
+    /// The function caller must be the token launcher or the hook.
     function withdraw(
         address raisedToken,
         address launchedToken
@@ -72,6 +86,7 @@ contract YexFTOFacade is IYexFTOFacade, Ownable {
         IYexFTOPair(pair).withdraw(msg.sender);
     }
 
+    /// @notice Claim the LP tokens from the FTO corresponding to your share.
     function claimLP(
         address raisedToken,
         address launchedToken
@@ -84,6 +99,8 @@ contract YexFTOFacade is IYexFTOFacade, Ownable {
         IYexFTOPair(pair).claimLP(msg.sender);
     }
 
+    /// @notice Withdraw your RaisedToken that was deposited in the FTO.
+    /// @dev This function will only succeed and not revert if the FTO status is Paused.
     function refundRaisedToken(
         address raisedToken,
         address launchedToken
@@ -96,6 +113,7 @@ contract YexFTOFacade is IYexFTOFacade, Ownable {
         IYexFTOPair(pair).refundRaisedToken(msg.sender);
     }
 
+    /// @notice Returns the amount of LP tokens you can claim from the FTO.
     function claimableLP(
         address raisedToken,
         address launchedToken
@@ -108,6 +126,14 @@ contract YexFTOFacade is IYexFTOFacade, Ownable {
         return IYexFTOPair(pair).claimableLP(msg.sender);
     }
 
+    /// @dev Deposit RaisedToken and LaunchedToken by calling the depositRaisedToken()
+    ///  and depositLaunchedToken() functions of the FTOPair.
+    /// First, transfer the RaisedToken to the FTOPair, then call the depositRaisedToken() function.
+    /// First, transfer the LaunchedToken to the FTOPair, then call the depositLaunchedToken() function.
+    /// @param raisedToken the address of Raised Token
+    /// @param launchedToken the address of Launched Token
+    /// @param raisedTokenAmount Amount of Raised Token to be deposited
+    /// @param launchedTokenAmount Amount of Launched Token to be deposited
     function _deposit(
         address raisedToken,
         address launchedToken,
