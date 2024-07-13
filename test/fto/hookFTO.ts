@@ -1,6 +1,6 @@
 import { ethers, network } from "hardhat";
 import { ERC20Faucet } from "../../typechain-types/contracts/core/ERC20Faucet";
-import { YexFTOFacade } from "../../typechain-types/contracts/core/YexFTOFacade";
+import { YexFTOFacadeV2 } from "../../typechain-types/contracts/core/YexFTOFacadeV2";
 
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
@@ -16,7 +16,7 @@ import {
 describe("YexFTO", function () {
   let customHook: CustomHook;
   let ftoFactory: YexFTOFactoryV2;
-  let ftoFacade: YexFTOFacade;
+  let ftoFacade: YexFTOFacadeV2;
   let henloDexFactory: HenloDexFactory;
   let henloDexRouter: HenloDexRouterV2;
   let usdt: ERC20Faucet;
@@ -45,9 +45,11 @@ describe("YexFTO", function () {
       addr2.address,
     ]);
 
-    // YexFTOFacade
-    const YexFTOFacade = await ethers.getContractFactory("YexFTOFacade");
-    ftoFacade = (await YexFTOFacade.deploy(ftoFactory.address)) as YexFTOFacade;
+    // YexFTOFacadeV2
+    const YexFTOFacadeV2 = await ethers.getContractFactory("YexFTOFacadeV2");
+    ftoFacade = (await YexFTOFacadeV2.deploy(
+      ftoFactory.address
+    )) as YexFTOFacadeV2;
 
     // CustomHook
     const CustomHook = await ethers.getContractFactory("CustomHook");
@@ -76,7 +78,7 @@ describe("YexFTO", function () {
       "YexFTOFactoryV2 init code: ",
       await ftoFactory.INIT_CODE_PAIR_HASH()
     );
-    console.log("YexFTOFacade address: ", ftoFacade.address);
+    console.log("YexFTOFacadeV2 address: ", ftoFacade.address);
     console.log("henloDexFactory address: ", henloDexFactory.address);
     console.log(
       "henloDexFactory initcode:",
@@ -146,7 +148,7 @@ describe("YexFTO", function () {
 
     await ftoFacade
       .connect(addr2)
-      .deposit(usdt.address, launchedToken, deposit_amount, 0);
+      .deposit(usdt.address, launchedToken, deposit_amount);
 
     await network.provider.send("evm_increaseTime", [raisingCycle + 5]);
     await network.provider.send("evm_mine");
@@ -246,7 +248,7 @@ describe("YexFTO", function () {
 
     await ftoFacade
       .connect(addr2)
-      .deposit(usdt.address, launchedToken, deposit_amount, 0);
+      .deposit(usdt.address, launchedToken, deposit_amount);
 
     await network.provider.send("evm_increaseTime", [raisingCycle + 5]);
     await network.provider.send("evm_mine");
@@ -339,7 +341,7 @@ describe("YexFTO", function () {
 
     await ftoFacade
       .connect(addr2)
-      .deposit(usdt.address, launchedToken, deposit_amount, 0);
+      .deposit(usdt.address, launchedToken, deposit_amount);
 
     await network.provider.send("evm_increaseTime", [raisingCycle + 5]);
     await network.provider.send("evm_mine");
