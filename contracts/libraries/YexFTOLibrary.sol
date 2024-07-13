@@ -42,7 +42,7 @@ library YexFTOLibrary {
                             hex"ff",
                             factory,
                             keccak256(abi.encodePacked(token0, token1)),
-                            hex"7afb47552aff4b8b4f811c5b66cb637863b98f04ac8c664403c7a9d81411cd3a" // init code hash
+                            hex"c5af5ba3a0fea5c9dd31463f5d4b5d69cd68df6548ff727cbdce76c3a47b66f1" // init code hash
                         )
                     )
                 )
