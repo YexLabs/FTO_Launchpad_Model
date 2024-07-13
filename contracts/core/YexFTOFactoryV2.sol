@@ -30,7 +30,7 @@ contract YexFTOFactoryV2 is IYexFTOFactoryV2, WhiteList {
     /// @param ftoPair Address of FTOPair
     function addEvent(address depositor, address ftoPair) external override {
         require(
-            IYexFTOPair(ftoPair).raisedTokenDeposit(depositor) != 0,
+            IYexFTOPairV2(ftoPair).raisedTokenDeposit(depositor) != 0,
             "Not participate in this rasing."
         );
         if (events_map[depositor][ftoPair] == false) {
@@ -100,7 +100,7 @@ contract YexFTOFactoryV2 is IYexFTOFactoryV2, WhiteList {
             symbol,
             msg.sender
         );
-        uint256 amount = _amount;
+
         address launchedToken = address(_launchedToken);
 
         // Deploy and initialize FTOPair
@@ -109,22 +109,17 @@ contract YexFTOFactoryV2 is IYexFTOFactoryV2, WhiteList {
             launchedToken,
             msg.sender,
             launchedTokenPercent,
+            _amount,
             poolHandler,
             raisingCycle,
             data
         );
 
         /**
-         * Only address(this) can mint.
-         * Mint an amount of LaunchedToken to address(this)
+         * Only FTOFactory: address(this) can mint.
+         * Mint an amount of LaunchedToken to FTOPair
          */
-        _launchedToken.mint(pair, amount);
-
-        /**
-         * Transfer the entire minted amount of LaunchedToken to the FTOPair.
-         * msg.sender(Token launcher or hook)
-         */
-        IYexFTOPair(pair).depositLaunchedToken(msg.sender, amount);
+        _launchedToken.mint(pair, _amount);
     }
 
     function allPairsLength() external view override returns (uint) {
@@ -141,6 +136,7 @@ contract YexFTOFactoryV2 is IYexFTOFactoryV2, WhiteList {
     /// @param launchedToken The address of LaunchedToken
     /// @param launchedTokenProvider When not using a custom hook, the address of the Token Launcher; when using a custom hook, the address of the hook contract
     /// @param launchedTokenPercent The proportion of LaunchedToken added to the DEX Pool
+    /// @param launchedTokenSupply The totalSupply of LaunchedToken, which is initially minted in its entirety
     /// @param swapHandler The router address of DEX
     /// @param raisingCycle Fundraising period (in seconds)
     /// @param data Data to be passed to the Hook; empty if LaunchPad does not use a hook
@@ -150,6 +146,7 @@ contract YexFTOFactoryV2 is IYexFTOFactoryV2, WhiteList {
         address launchedToken,
         address launchedTokenProvider,
         uint256 launchedTokenPercent,
+        uint256 launchedTokenSupply,
         address swapHandler,
         uint256 raisingCycle,
         bytes calldata data
@@ -192,6 +189,7 @@ contract YexFTOFactoryV2 is IYexFTOFactoryV2, WhiteList {
             launchedToken,
             launchedTokenProvider,
             launchedTokenPercent,
+            launchedTokenSupply,
             swapHandler,
             raisingCycle,
             data
@@ -220,7 +218,7 @@ contract YexFTOFactoryV2 is IYexFTOFactoryV2, WhiteList {
         address launchedToken
     ) external override onlyOwner {
         address pair = getPair[raisedToken][launchedToken];
-        IYexFTOPair(pair).pause();
+        IYexFTOPairV2(pair).pause();
     }
 
     /// @dev This function resumes the fundraising status of the FTOPair that was paused.
@@ -231,7 +229,7 @@ contract YexFTOFactoryV2 is IYexFTOFactoryV2, WhiteList {
         address launchedToken
     ) external override onlyOwner {
         address pair = getPair[raisedToken][launchedToken];
-        IYexFTOPair(pair).resume();
+        IYexFTOPairV2(pair).resume();
     }
 
     function getFTOPairProvider(
@@ -239,7 +237,7 @@ contract YexFTOFactoryV2 is IYexFTOFactoryV2, WhiteList {
         address launchedToken
     ) public view returns (address provider) {
         address pair = getPair[raisedToken][launchedToken];
-        provider = IYexFTOPair(pair).launchedTokenProvider();
+        provider = IYexFTOPairV2(pair).launchedTokenProvider();
     }
 
     /// @notice Withdraws the accumulated LPToken received as a fee from the FTOPair.

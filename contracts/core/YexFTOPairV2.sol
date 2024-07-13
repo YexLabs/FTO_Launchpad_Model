@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.16;
 
-import "../interfaces/IYexFTOPair.sol";
+import "../interfaces/IYexFTOPairV2.sol";
 import "../interfaces/IYexFTOFactoryV2.sol";
 import "../interfaces/IHenloDexRouterV1.sol";
 import "../interfaces/IHenloDexFactory.sol";
@@ -13,7 +13,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 /// @title Contract that manages the FTO Launchpad
 /// @notice Created from the FTO Factory contract
 /// @dev This contract address is uniquely determined by the RaisedToken and LaunchedToken.
-contract YexFTOPairV2 is IYexFTOPair {
+contract YexFTOPairV2 is IYexFTOPairV2 {
     /// @dev The percentage of LP tokens received after adding liquidity to the AMM Pool that is paid to the Factory as a fee
     /// The decimal for feePercent is 0.
     uint8 public feePercent = 5;
@@ -118,6 +118,7 @@ contract YexFTOPairV2 is IYexFTOPair {
     /// @param _launchedToken The address of LaunchedToken
     /// @param _launchedTokenProvider When not using a custom hook, the address of the Token Launcher; when using a custom hook, the address of the hook contract
     /// @param _launchedTokenPercent The proportion of LaunchedToken added to the DEX Pool
+    /// @param _launchedTokenSupply The totalSupply of LaunchedToken, which is initially minted in its entirety
     /// @param _otherPool The router address of DEX
     /// @param raisingCycle Fundraising period (in seconds)
     /// @param data Data to be passed to the hook contract; empty if FTO does not use a custom hook
@@ -126,6 +127,7 @@ contract YexFTOPairV2 is IYexFTOPair {
         address _launchedToken,
         address _launchedTokenProvider,
         uint256 _launchedTokenPercent,
+        uint256 _launchedTokenSupply,
         address _otherPool,
         uint256 raisingCycle,
         bytes calldata data
@@ -137,6 +139,7 @@ contract YexFTOPairV2 is IYexFTOPair {
         launchedToken = _launchedToken;
         launchedTokenProvider = _launchedTokenProvider;
         launchPercent = _launchedTokenPercent;
+        depositedLaunchedToken = _launchedTokenSupply;
 
         // Calculates the end time of the FTO fundraising.
         endTime = block.timestamp + raisingCycle;
@@ -166,28 +169,6 @@ contract YexFTOPairV2 is IYexFTOPair {
              */
             IYexFTOHook(hook).execute(_hookParams);
         }
-    }
-
-    function depositLaunchedToken(
-        address depositor,
-        uint256 amount
-    ) external override whenNotPaused {
-        require(block.timestamp < endTime, "deposit: raising time is over");
-        require(
-            depositor == launchedTokenProvider,
-            "only Project owner can deposit"
-        );
-        if (amount == 0) {
-            revert InvalidAmount();
-        }
-        uint256 launchedTokenBalance = IERC20(launchedToken).balanceOf(
-            address(this)
-        );
-        if (launchedTokenBalance != amount + depositedLaunchedToken) {
-            revert InvalidUpdate();
-        }
-        depositedLaunchedToken = depositedLaunchedToken + amount;
-        emit DepositLaunchedToken(depositor, amount);
     }
 
     /// @dev Function called after depositors deposit RaisedToken into the FTOPair
@@ -259,30 +240,6 @@ contract YexFTOPairV2 is IYexFTOPair {
         IERC20(raisedToken).transfer(depositor, deposit_amount);
 
         emit Refund(depositor, deposit_amount);
-    }
-
-    /// @dev Transfer all LaunchedToken in the FTOPair to the [withdrawer] address.
-    /// @param withdrawer The address to receive the withdrawn LaunchedToken; This must be launchedTokenProvider
-    function withdraw(address withdrawer) external override lock {
-        /**
-         * Can only be called if the FTO status is Failed or Paused.
-         * If there are no RaisedToken deposits at the end of the fundraising period,
-         *  the FTO status becomes Failed.
-         */
-        require(
-            FTOState == Status.Failed || FTOState == Status.Paused,
-            "fund raising has already concluded"
-        );
-        require(
-            launchedTokenProvider == withdrawer,
-            "only provider can withdraw"
-        );
-
-        uint256 withdraw_amount = depositedLaunchedToken;
-        depositedLaunchedToken = 0;
-
-        IERC20(launchedToken).transfer(withdrawer, withdraw_amount);
-        emit Withdraw(withdrawer, withdraw_amount);
     }
 
     /// @dev Function that allows the [claimer] to claim LP tokens
