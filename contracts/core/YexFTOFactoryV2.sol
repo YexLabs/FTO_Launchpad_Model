@@ -71,7 +71,7 @@ contract YexFTOFactoryV2 is IYexFTOFactoryV2, WhiteList {
 
     /// @notice Creates Launch Token and FTOPair
     /// @dev This function can be called from the Token Launcher's address or Hook contract.
-    /// Deploy the LaunchedToken, mint it, then create and initialize the FTOPair.
+    /// Deploy the LaunchedToken, create the FTOPair, mint LaunchedToken on FTOPair and initialize the FTOPair.
     /// @param raisedToken Token address for investment in FTO fundraising
     /// @param name The name of the LaunchedToken
     /// @param symbol The symbol of the LaunchedToken
@@ -103,7 +103,10 @@ contract YexFTOFactoryV2 is IYexFTOFactoryV2, WhiteList {
 
         address launchedToken = address(_launchedToken);
 
-        // Deploy and initialize FTOPair
+        /**
+         * Deploy FTOPair and mint LaunchedToken on FTOPair
+         * Initialize FTOPair
+         */
         pair = _createPair(
             raisedToken,
             launchedToken,
@@ -114,12 +117,6 @@ contract YexFTOFactoryV2 is IYexFTOFactoryV2, WhiteList {
             raisingCycle,
             data
         );
-
-        /**
-         * Only FTOFactory: address(this) can mint.
-         * Mint an amount of LaunchedToken to FTOPair
-         */
-        _launchedToken.mint(pair, _amount);
     }
 
     function allPairsLength() external view override returns (uint) {
@@ -130,7 +127,9 @@ contract YexFTOFactoryV2 is IYexFTOFactoryV2, WhiteList {
         return raisedTokens;
     }
 
-    /// @dev Deploy the FTOPair using create2 and call the [initialize] function of FTOPair to initialize it.
+    /// @dev Deploy the FTOPair using create2
+    /// and mint LaunchedToken on FTOPair
+    /// and call the [initialize] function of FTOPair to initialize it.
     /// This function is called after the LaunchedToken is deployed.
     /// @param raisedToken Token address for investment in FTO fundraising
     /// @param launchedToken The address of LaunchedToken
@@ -181,6 +180,12 @@ contract YexFTOFactoryV2 is IYexFTOFactoryV2, WhiteList {
         }
 
         /**
+         * Only FTOFactory: address(this) can mint.
+         * Mint launchedTokenSupply of LaunchedToken to FTOPair
+         */
+        YexFTOLaunchToken(launchedToken).mint(pair, launchedTokenSupply);
+
+        /**
          * Set the parameter values in the FTOPair contract.
          * If using a CustomHook, send [data] to the hook in the FTOPair's [initialize].
          */
@@ -189,7 +194,6 @@ contract YexFTOFactoryV2 is IYexFTOFactoryV2, WhiteList {
             launchedToken,
             launchedTokenProvider,
             launchedTokenPercent,
-            launchedTokenSupply,
             swapHandler,
             raisingCycle,
             data

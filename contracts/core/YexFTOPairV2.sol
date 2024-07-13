@@ -118,7 +118,6 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
     /// @param _launchedToken The address of LaunchedToken
     /// @param _launchedTokenProvider When not using a custom hook, the address of the Token Launcher; when using a custom hook, the address of the hook contract
     /// @param _launchedTokenPercent The proportion of LaunchedToken added to the DEX Pool
-    /// @param _launchedTokenSupply The totalSupply of LaunchedToken, which is initially minted in its entirety
     /// @param _otherPool The router address of DEX
     /// @param raisingCycle Fundraising period (in seconds)
     /// @param data Data to be passed to the hook contract; empty if FTO does not use a custom hook
@@ -127,7 +126,6 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
         address _launchedToken,
         address _launchedTokenProvider,
         uint256 _launchedTokenPercent,
-        uint256 _launchedTokenSupply,
         address _otherPool,
         uint256 raisingCycle,
         bytes calldata data
@@ -139,7 +137,8 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
         launchedToken = _launchedToken;
         launchedTokenProvider = _launchedTokenProvider;
         launchPercent = _launchedTokenPercent;
-        depositedLaunchedToken = _launchedTokenSupply;
+        // LauncheToken has already been minted in the FTOPair.
+        depositedLaunchedToken = IERC20(_launchedToken).balanceOf(address(this));
 
         // Calculates the end time of the FTO fundraising.
         endTime = block.timestamp + raisingCycle;
