@@ -61,12 +61,7 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
 
     /// @dev The address of the LP tokens received after adding liquidity to HenloDex
     address public lpToken;
-    /// @dev The amount of LP tokens claimed by the Token Provider
-    /// The Token Provider can claim 50% of the LP tokens.
-    uint256 public providerClaimedLp;
-    /// @dev The total amount of LP tokens claimed by depositors
-    /// Depositors can claim from 50% of the LP tokens in proportion to their share of the deposited RaisedToken.
-    uint256 public userClaimedLp;
+
     /// @dev The total amount of LP tokens claimed by the TokenLauncher and depositors.
     uint256 public totalClaimedLp;
 
