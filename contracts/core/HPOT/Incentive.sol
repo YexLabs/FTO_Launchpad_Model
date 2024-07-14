@@ -10,6 +10,9 @@ contract Incentive is AccessControl {
     address public hpot;
     address public vault;
     uint256 public rewardAmount;
+    uint256 public totalReward;
+
+    event Reward(address user, uint256 amount);
 
     error InvalidState();
 
@@ -74,5 +77,9 @@ contract Incentive is AccessControl {
             "Need Approve ERC20 token"
         );
         token.transferFrom(vault, msg.sender, rewardAmount);
+
+        totalReward += rewardAmount;
+
+        emit Reward(msg.sender, rewardAmount);
     }
 }

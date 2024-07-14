@@ -160,6 +160,11 @@ describe("Incentive", function () {
     await network.provider.send("evm_increaseTime", [raisingCycle + 5]);
     await network.provider.send("evm_mine");
 
+    // have no admin role
+    await expect(incentive.connect(addr2).setVault(addr2.address)).to.be
+      .reverted;
+    await expect(incentive.connect(addr2).setRewardAmount(10)).to.be.reverted;
+
     // perform success
     expect(
       await incentive.connect(addr2).performable(usdt.address, launchedToken)

@@ -6,11 +6,11 @@ import "../libraries/ERC20.sol";
 contract ERC20Faucet is ERC20 {
     constructor(string memory name, string memory symbol) ERC20(name, symbol) {}
 
-    mapping(address => bool) public faucetedList;
+    mapping(address => bool) public faucetClaimer;
 
     function faucet() public {
-        require(!faucetedList[msg.sender], "fauceted");
-        faucetedList[msg.sender] = true;
+        require(!faucetClaimer[msg.sender], "fauceted");
+        faucetClaimer[msg.sender] = true;
         _mint(msg.sender, 300 * (10 ** decimals()));
     }
 }
