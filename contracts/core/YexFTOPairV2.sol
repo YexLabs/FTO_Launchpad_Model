@@ -16,7 +16,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 contract YexFTOPairV2 is IYexFTOPairV2 {
     /// @dev The percentage of LP tokens received after adding liquidity to the AMM Pool that is paid to the Factory as a fee
     /// The decimal for feePercent is 0.
-    uint8 public feePercent = 5;
+    uint8 public feePercent = 3;
 
     /// @dev Address of Raised Token
     /// This value is set when the initialize function is called by the FTOFactory and does not change once set.
@@ -138,7 +138,9 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
         launchedTokenProvider = _launchedTokenProvider;
         launchPercent = _launchedTokenPercent;
         // LauncheToken has already been minted in the FTOPair.
-        depositedLaunchedToken = IERC20(_launchedToken).balanceOf(address(this));
+        depositedLaunchedToken = IERC20(_launchedToken).balanceOf(
+            address(this)
+        );
 
         // Calculates the end time of the FTO fundraising.
         endTime = block.timestamp + raisingCycle;

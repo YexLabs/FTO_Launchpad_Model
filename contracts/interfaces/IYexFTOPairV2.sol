@@ -31,7 +31,9 @@ interface IYexFTOPairV2 is AutomationCompatibleInterface {
 
     function claimableLP(address claimer) external view returns (uint256);
 
-    function claimableLaunchedToken(address claimer) external view returns (uint256);
+    function claimableLaunchedToken(
+        address claimer
+    ) external view returns (uint256);
 
     function launchedTokenProvider() external view returns (address);
 
@@ -44,4 +46,10 @@ interface IYexFTOPairV2 is AutomationCompatibleInterface {
     function raisedToken() external view returns (address);
 
     function launchedToken() external view returns (address);
+
+    function checkUpkeep(
+        bytes calldata /* checkData */
+    ) external view returns (bool, bytes memory);
+
+    function performUpkeep(bytes calldata) external;
 }
