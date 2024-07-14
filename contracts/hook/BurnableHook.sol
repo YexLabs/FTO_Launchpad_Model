@@ -37,4 +37,12 @@ abstract contract BurnableHook is NormalHook {
 
         YexFTOLaunchToken(launchedToken).burn(launchedAmount);
     }
+
+    function getFlags() public pure virtual override returns (YexFTOHook.Flags memory) {
+        return YexFTOHook.Flags({
+            execute: false,
+            afterAddLiquidity: false,
+            burnable: true
+        });
+    }
 }

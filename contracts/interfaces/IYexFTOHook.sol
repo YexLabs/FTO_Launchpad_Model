@@ -2,7 +2,9 @@
 
 pragma solidity =0.8.16;
 
-interface IYexFTOHook {
+import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+
+interface IYexFTOHook is IERC165 {
     function createFTO(
         address raisedToken,
         string calldata name,
