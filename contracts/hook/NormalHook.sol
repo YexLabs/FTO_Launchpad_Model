@@ -3,14 +3,26 @@ pragma solidity ^0.8.16;
 import "../interfaces/IYexFTOHook.sol";
 import "../interfaces/IYexFTOFactoryV2.sol";
 import "./../libraries/TransferHelper.sol";
+import "./../libraries/YexFTOHook.sol";
+import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 
-contract NormalHook is IYexFTOHook {
+abstract contract NormalHook is ERC165, IYexFTOHook {
     error NotImplemented();
 
     address public immutable ftoFactory;
 
     constructor(address _ftoFactory) {
         ftoFactory = _ftoFactory;
+
+        YexFTOHook.validateHookAddress(address(this), getFlags());
+    }
+
+    function getFlags() public pure virtual returns (YexFTOHook.Flags memory);
+
+    function supportsInterface(bytes4 interfaceId) public view virtual override(ERC165, IERC165) returns (bool) {
+        return
+            interfaceId == type(IYexFTOHook).interfaceId ||
+            super.supportsInterface(interfaceId);
     }
 
     function createFTO(
@@ -47,15 +59,10 @@ contract NormalHook is IYexFTOHook {
     }
 
     function afterAddLiquidity(
-        address ftoPair,
-        address lpToken,
-        uint256 lpAmount
+        address /*ftoPair*/,
+        address /*lpToken*/,
+        uint256 /*lpAmount*/
     ) public virtual override {
-        TransferHelper.safeTransferFrom(
-            lpToken,
-            ftoPair,
-            address(this),
-            lpAmount
-        );
+        revert NotImplemented();
     }
 }

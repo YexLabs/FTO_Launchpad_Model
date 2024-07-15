@@ -8,12 +8,15 @@ import "../interfaces/IHenloDexFactory.sol";
 import "../interfaces/IHenloDexPair.sol";
 import "../interfaces/IYexFTOHook.sol";
 import "../libraries/TransferHelper.sol";
+import "../libraries/YexFTOHook.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /// @title Contract that manages the FTO Launchpad
 /// @notice Created from the FTO Factory contract
 /// @dev This contract address is uniquely determined by the RaisedToken and LaunchedToken.
 contract YexFTOPairV2 is IYexFTOPairV2 {
+    using YexFTOHook for address;
+
     /// @dev The percentage of LP tokens received after adding liquidity to the AMM Pool that is paid to the Factory as a fee
     /// The decimal for feePercent is 0.
     uint8 public feePercent = 5;
@@ -58,12 +61,9 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
 
     /// @dev The address of the LP tokens received after adding liquidity to HenloDex
     address public lpToken;
-    /// @dev The amount of LP tokens claimed by the Token Provider
-    /// The Token Provider can claim 50% of the LP tokens.
-    uint256 public providerClaimedLp;
-    /// @dev The total amount of LP tokens claimed by depositors
-    /// Depositors can claim from 50% of the LP tokens in proportion to their share of the deposited RaisedToken.
-    uint256 public userClaimedLp;
+
+    /// @dev The total amount of LP tokens claimed by the TokenLauncher and depositors.
+    uint256 public totalClaimedLp;
 
     /// @dev Indicates the status of the FTO. The status can be [Processing], [Paused], [Success], or [Failed].
     Status public FTOState = Status.Processing;
@@ -145,8 +145,12 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
 
         otherPool = _otherPool;
 
-        // When data is not empty, it is assumed that _launchedTokenProvider is a hook.
-        if (data.length > 0) {
+        /**
+         * If the data is not empty and _launchedTokenProvider supports the IYexFTOHook interface,
+         *  _launchedTokenProvider is considered a hook, and this FTOPair is determined to use a custom hook.
+         */
+        if (data.length > 0 &&
+            _launchedTokenProvider.supportsInterface(type(IYexFTOHook).interfaceId)) {
             /**
              * _hookPercent: The percentage of LP tokens that are vested in hook contract
              * _hookParams: Data passed to the hook contract.
@@ -164,9 +168,11 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
              * If the hook provides vesting functionality,
              *      _hookParams contains vesting info,
              *      and the [execute] function records the vesting for this FTOPair in the hook.
-             * Future updates: Need to check if the hook contract supports the [execute] function.
+             * _launchedTokenProvider.hasExecute(): Check if the execute function is defined in the hook contract.
              */
-            IYexFTOHook(hook).execute(_hookParams);
+            if(_launchedTokenProvider.hasExecute()) {
+                IYexFTOHook(_launchedTokenProvider).execute(_hookParams);
+            }
         }
     }
 
@@ -241,51 +247,60 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
         emit Refund(depositor, deposit_amount);
     }
 
+    /// @dev Function that allows the [msg.sender] to claim LP tokens
+    /// This function can only be called by a hook contract that has a burnable function.
+    /// This function can only be called after the fundraising is completed,
+    ///   liquidity has been added to the Dex pool, and the FTO status is set to Success.
+    function withdrawRaisedToken() external {
+        require(FTOState == Status.Success, "fund rasing not success.");
+        // The part confirming whether msg.sender is the address of a hook contract with a burnable function:
+        require(msg.sender == hook && hook.hasBurnable(), "YexFTOPair: FORBIDDEN");
+        _transferLP(msg.sender);
+    }
+
     /// @dev Function that allows the [claimer] to claim LP tokens
-    /// The amount the [claimer] can claim is calculated within the function.
     /// This function can only be called after the fundraising is completed,
     ///   liquidity has been added to the Dex pool, and the FTO status is set to Success.
     /// @param claimer The address claiming the LP tokens; the address receiving the LP tokens
     function claimLP(address claimer) external lock {
         require(FTOState == Status.Success, "fund rasing not success.");
         /**
-         * The [claimer] must be either the launchedTokenProvider
-         *  or a depositor who deposited RaisedToken.
+         * [claimer] must satisfy the following conditions:
+         * 1. A depositor can be a [claimer].
+         * 2. A launchedTokenProvider that does not use a custom hook can be a [claimer].
+         * 3. If a custom hook is used but the hook does not have a burnable function, it can be a [claimer].
          */
         require(
-            claimer == launchedTokenProvider ||
-                raisedTokenDeposit[claimer] != 0,
+            raisedTokenDeposit[claimer] != 0 ||
+            (claimer == launchedTokenProvider && !hook.hasBurnable()),
             "only launched token provider or raised token depositer can claim."
         );
 
+        _transferLP(claimer);
+    }
+
+    /// @dev A function that calculates the amount of LP tokens [to] can claim and transfers that amount to [to].
+    /// @param to The address of the claimer
+    function _transferLP(address to) private {
         /**
-         * lpAmount is the amount of LP tokens the claimer can claim.
-         * lpAmount includes the LP tokens the claimer has already claimed.
+         * lpAmount is the amount of LP tokens the claimer[to] can claim.
+         * lpAmount includes the LP tokens the claimer[to] has already claimed.
          * Therefore, the condition lpAmount > claimedAmount must be satisfied.
          */
-        uint256 lpAmount = _calculateLPAmount(claimer);
-        uint256 claimedAmount = claimedLp[claimer];
+        uint256 lpAmount = _calculateLPAmount(to);
+        uint256 claimedAmount = claimedLp[to];
         require(lpAmount > claimedAmount, "LP amount is too small.");
 
-        // claimableAmount is the actual amount of LP tokens being claimed by the claimer.
+        // claimableAmount is the actual amount of LP tokens being claimed by the claimer[to].
         uint256 claimableAmount = lpAmount - claimedAmount;
+        // At this point, the amount of LP tokens claimed by the claimer[to] becomes lpAmount.
+        claimedLp[to] = lpAmount;
 
-        // At this point, the amount of LP tokens claimed by the claimer becomes lpAmount.
-        claimedLp[claimer] = lpAmount;
+        // Update the totalClaimedLp
+        totalClaimedLp += claimableAmount;
 
-        /**
-         * Update the claimed amount in different tracking state variables
-         *  depending on whether the claimer is the launchedTokenProvider or a common depositor.
-         */
-        if (claimer == launchedTokenProvider) {
-            providerClaimedLp += claimableAmount;
-        } else {
-            userClaimedLp += claimableAmount;
-        }
-
-        TransferHelper.safeTransfer(lpToken, claimer, claimableAmount);
-
-        emit ClaimLP(claimer, claimableAmount);
+        TransferHelper.safeTransfer(lpToken, to, claimableAmount);
+        emit ClaimLP(to, claimableAmount);
     }
 
     /// @dev Calculates the amount of LP tokens the [claimer] can claim at the current time.
@@ -306,13 +321,11 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
     ) internal view returns (uint256 lpAmount) {
         /**
          * Calculates the total accumulated amount of LP tokens up to the current time.
-         * providerClaimedLp + userClaimedLp: The total amount of LP tokens already claimed.
+         * totalClaimedLp: The total amount of LP tokens already claimed.
          * The reason for calculating cumulativeLP each time is that the balance of address(this)
          *  may change as vested LP tokens are released and sent back to the FTOPair.
          */
-        uint256 cumulativeLP = IERC20(lpToken).balanceOf(address(this)) +
-            (providerClaimedLp + userClaimedLp);
-
+        uint256 cumulativeLP = IERC20(lpToken).balanceOf(address(this)) + totalClaimedLp;
         /**
          * lpAmount = cumulativeLP / 2;
          * If the claimer is the launchedTokenProvider, they can claim 50% of the total LP tokens.
@@ -345,10 +358,9 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
 
         // Calculates the amount of LaunchedToken the claimer can claim as a reward.
         uint256 amount = _calculateLaunchedTokenAmount(claimer);
+        require(amount > 0, "claim amount is too small.");
 
         claimedLaunchedToken[claimer] = true;
-
-        require(amount > 0, "claim amount is too small.");
 
         TransferHelper.safeTransfer(launchedToken, claimer, amount);
 
@@ -360,7 +372,7 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
         address claimer
     ) external view returns (uint256) {
         require(FTOState == Status.Success, "fund rasing not success.");
-        uint256 amount = _calculateLaunchedTokenAmount(claimer);
+        uint256 amount = claimedLaunchedToken[claimer] ? 0 : _calculateLaunchedTokenAmount(claimer);
         return amount;
     }
 
@@ -369,18 +381,12 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
     function _calculateLaunchedTokenAmount(
         address caller
     ) internal view returns (uint256 amount) {
-        if (claimedLaunchedToken[caller]) {
-            return 0;
-        }
-
-        uint256 deposit_amount = raisedTokenDeposit[caller];
-
         /**
          * The amount is calculated in proportion to the [claimer]'s share.
          * poolLaunchedTokenAmount is the initial amount of LaunchedToken provided as a reward in the FTO.
          */
         amount =
-            (deposit_amount * poolLaunchedTokenAmount) /
+            (raisedTokenDeposit[caller] * poolLaunchedTokenAmount) /
             depositedRaisedToken;
     }
 
@@ -433,7 +439,7 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
             FTOState = Status.Success;
 
             // Handling part for when the FTO uses a custom hook
-            if (hook != address(0)) {
+            if (hook.hasAfterAddLiquidity()) {
                 /**
                  * Integration part with the Vesting Hook
                  * vestAmount is the amount of LP tokens to be vested in the hook.
