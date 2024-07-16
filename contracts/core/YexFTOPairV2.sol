@@ -231,20 +231,18 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
 
     /// @dev Transfer the entire amount of RaisedToken deposited back to the depositor's address.
     /// Can only be called if the FTO status is [Paused].
-    /// @param depositor Address of the depositor who requested a refund of RaisedToken.
-    function refundRaisedToken(
-        address depositor
-    ) external override lock whenPaused {
-        // Verify that the depositor is a valid address that had deposited RaisedToken.
-        uint256 deposit_amount = raisedTokenDeposit[depositor];
+    /// The depositor must call this function directly.
+    function refundRaisedToken() external override lock whenPaused {
+        // Verify that msg.sender is a valid address that had deposited RaisedToken.
+        uint256 deposit_amount = raisedTokenDeposit[msg.sender];
         require(deposit_amount > 0, "refundable amount is 0");
 
-        raisedTokenDeposit[depositor] = 0;
+        raisedTokenDeposit[msg.sender] = 0;
         depositedRaisedToken -= deposit_amount;
 
-        IERC20(raisedToken).transfer(depositor, deposit_amount);
+        IERC20(raisedToken).transfer(msg.sender, deposit_amount);
 
-        emit Refund(depositor, deposit_amount);
+        emit Refund(msg.sender, deposit_amount);
     }
 
     /// @dev Function that allows the [msg.sender] to claim LP tokens

@@ -95,20 +95,6 @@ contract YexFTOFacadeV2 is IYexFTOFacadeV2, Ownable {
         IYexFTOPairV2(pair).claimLaunchedToken(msg.sender);
     }
 
-    /// @notice Withdraw your RaisedToken that was deposited in the FTO.
-    /// @dev This function will only succeed and not revert if the FTO status is Paused.
-    function refundRaisedToken(
-        address raisedToken,
-        address launchedToken
-    ) external override {
-        address pair = YexFTOLibrary.pairFor(
-            factory,
-            raisedToken,
-            launchedToken
-        );
-        IYexFTOPairV2(pair).refundRaisedToken(msg.sender);
-    }
-
     /// @notice Returns the amount of LP tokens you can claim from the FTO.
     function claimableLP(
         address raisedToken,

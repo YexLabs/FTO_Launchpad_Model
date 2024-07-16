@@ -17,7 +17,7 @@ interface IYexFTOPairV2 is AutomationCompatibleInterface {
     event Resumed(uint timestamp);
     event ClaimLaunchedToken(address claimer, uint256 amount);
 
-    function depositRaisedToken(address depositer, uint256 amount) external;
+    function depositRaisedToken(address depositor, uint256 amount) external;
 
     function claimLP(address claimer) external;
 
@@ -27,7 +27,7 @@ interface IYexFTOPairV2 is AutomationCompatibleInterface {
 
     function resume() external;
 
-    function refundRaisedToken(address depositer) external;
+    function refundRaisedToken() external;
 
     function claimableLP(address claimer) external view returns (uint256);
 
