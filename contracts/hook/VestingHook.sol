@@ -84,14 +84,13 @@ abstract contract VestingHook is NormalHook {
     }
 
     function liquidityHookOp(
-        address ftoPair,
         address lpToken,
         uint256 lpAmount
     ) public virtual override onlyFTOPair {
-        getPair[ftoPair].lpToken = lpToken;
+        getPair[msg.sender].lpToken = lpToken;
         TransferHelper.safeTransferFrom(
             lpToken,
-            ftoPair,
+            msg.sender,
             address(this),
             lpAmount
         );

@@ -31,11 +31,10 @@ contract CustomHook is VestingHook, BurnableHook {
     }
 
     function liquidityHookOp(
-        address ftoPair,
         address lpToken,
         uint256 lpAmount
     ) public override(VestingHook, NormalHook) {
-        VestingHook.liquidityHookOp(ftoPair, lpToken, lpAmount);
+        VestingHook.liquidityHookOp(lpToken, lpAmount);
     }
 
     function execute(

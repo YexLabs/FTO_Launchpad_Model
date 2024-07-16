@@ -448,7 +448,6 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
                 uint256 vestAmount = (_totalLP * percent4hook) / 100;
                 IERC20(pair).approve(hook, vestAmount);
                 IYexFTOHook(hook).liquidityHookOp(
-                    address(this),
                     pair,
                     vestAmount
                 );
