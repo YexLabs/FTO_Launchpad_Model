@@ -58,7 +58,7 @@ abstract contract NormalHook is ERC165, IYexFTOHook {
         revert NotImplemented();
     }
 
-    function afterAddLiquidity(
+    function liquidityHookOp(
         address /*ftoPair*/,
         address /*lpToken*/,
         uint256 /*lpAmount*/

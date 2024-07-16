@@ -30,12 +30,12 @@ contract CustomHook is VestingHook, BurnableHook {
             data);
     }
 
-    function afterAddLiquidity(
+    function liquidityHookOp(
         address ftoPair,
         address lpToken,
         uint256 lpAmount
     ) public override(VestingHook, NormalHook) {
-        VestingHook.afterAddLiquidity(ftoPair, lpToken, lpAmount);
+        VestingHook.liquidityHookOp(ftoPair, lpToken, lpAmount);
     }
 
     function execute(
@@ -54,7 +54,7 @@ contract CustomHook is VestingHook, BurnableHook {
     function getFlags() public pure override(VestingHook, BurnableHook) returns (YexFTOHook.Flags memory) {
         return YexFTOHook.Flags({
             execute: true,
-            afterAddLiquidity: true,
+            liquidityHookOp: true,
             burnable: true
         });
     }

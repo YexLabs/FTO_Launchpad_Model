@@ -201,7 +201,7 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
          * This function will revert
          * if the depositor has not transferred [amount] of RaisedToken to address(this) before calling it.
          */
-        if (raisedTokenBalance != amount + depositedRaisedToken) {
+        if (raisedTokenBalance >= amount + depositedRaisedToken) {
             revert InvalidUpdate();
         }
 
@@ -439,7 +439,7 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
             FTOState = Status.Success;
 
             // Handling part for when the FTO uses a custom hook
-            if (hook.hasAfterAddLiquidity()) {
+            if (hook.hasLiquidityHookOp()) {
                 /**
                  * Integration part with the Vesting Hook
                  * vestAmount is the amount of LP tokens to be vested in the hook.
@@ -447,7 +447,7 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
                  */
                 uint256 vestAmount = (_totalLP * percent4hook) / 100;
                 IERC20(pair).approve(hook, vestAmount);
-                IYexFTOHook(hook).afterAddLiquidity(
+                IYexFTOHook(hook).liquidityHookOp(
                     address(this),
                     pair,
                     vestAmount

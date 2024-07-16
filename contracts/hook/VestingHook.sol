@@ -83,7 +83,7 @@ abstract contract VestingHook is NormalHook {
         );
     }
 
-    function afterAddLiquidity(
+    function liquidityHookOp(
         address ftoPair,
         address lpToken,
         uint256 lpAmount
@@ -191,7 +191,7 @@ abstract contract VestingHook is NormalHook {
     function getFlags() public pure virtual override returns (YexFTOHook.Flags memory) {
         return YexFTOHook.Flags({
             execute: true,
-            afterAddLiquidity: true,
+            liquidityHookOp: true,
             burnable: false
         });
     }
