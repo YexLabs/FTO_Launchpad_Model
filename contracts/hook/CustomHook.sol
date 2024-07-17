@@ -1,12 +1,28 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.16;
-import "./BurnableHook.sol";
+
 import "./NormalHook.sol";
 import "./VestingHook.sol";
-import "./../libraries/TransferHelper.sol";
-
+import "./BurnableHook.sol";
 contract CustomHook is VestingHook, BurnableHook {
+    struct CustomHookParam {
+        uint64 startTimestamp;
+        uint64 durationSeconds;
+        address receiver;
+    }
+
     constructor(address _ftoFactory) NormalHook(_ftoFactory) {
+    }
+
+    modifier onlyWhenLocked() override(VestingHook, BurnableHook) {
+        require(lock == 1, "Not locked");
+        _;
+    }
+
+    modifier lockFunction() override(VestingHook, BurnableHook) {
+        lock = 1;
+        _;
+        lock = 0;
     }
 
     function createFTO(
@@ -18,8 +34,8 @@ contract CustomHook is VestingHook, BurnableHook {
         address poolHandler,
         uint256 raisingCycle,
         bytes calldata data
-    ) public override(VestingHook, NormalHook) {
-        VestingHook.createFTO(
+    ) public virtual override(VestingHook, BurnableHook) lockFunction {
+        NormalHook.createFTO(
             raisedToken,
             name,
             symbol,
@@ -27,7 +43,17 @@ contract CustomHook is VestingHook, BurnableHook {
             launchedTokenPercent,
             poolHandler,
             raisingCycle,
-            data);
+            data
+        );
+    }
+
+    function execute(
+        bytes calldata data
+    ) public override(VestingHook, BurnableHook) onlyWhenLocked {
+        CustomHookParam memory params = abi.decode(data, (CustomHookParam));
+
+        _setVestingHookParam(VestingHookParam(params.startTimestamp, params.durationSeconds));
+        _setBurnableHookParam(BurnableHookParam(params.receiver));
     }
 
     function liquidityHookOp(
@@ -37,17 +63,10 @@ contract CustomHook is VestingHook, BurnableHook {
         VestingHook.liquidityHookOp(lpToken, lpAmount);
     }
 
-    function execute(
-        bytes calldata data
-    ) public override(VestingHook, NormalHook) {
-        VestingHook.execute(data);
-    }
-
-    function claimLP(
-        address ftoPair,
-        address lpToken
+    function withdrawRaisedToken(
+        address ftoPair
     ) public override(BurnableHook, NormalHook) {
-        BurnableHook.claimLP(ftoPair, lpToken);
+        BurnableHook.withdrawRaisedToken(ftoPair);
     }
 
     function getFlags() public pure override(VestingHook, BurnableHook) returns (YexFTOHook.Flags memory) {

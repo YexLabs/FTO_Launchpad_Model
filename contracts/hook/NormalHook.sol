@@ -9,6 +9,7 @@ import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 abstract contract NormalHook is ERC165, IYexFTOHook {
     error NotImplemented();
 
+    uint256 internal lock;
     address public immutable ftoFactory;
 
     constructor(address _ftoFactory) {
@@ -47,9 +48,8 @@ abstract contract NormalHook is ERC165, IYexFTOHook {
         );
     }
 
-    function claimLP(
-        address /*ftoPair*/,
-        address /*lpToken*/
+    function withdrawRaisedToken(
+        address /*ftoPair*/
     ) external virtual {
         revert NotImplemented();
     }

@@ -16,7 +16,7 @@ interface IYexFTOHook is IERC165 {
         bytes calldata data
     ) external;
 
-    function claimLP(address ftoPair, address lpToken) external;
+    function withdrawRaisedToken(address ftoPair) external;
 
     function execute(bytes calldata params) external;
 

@@ -484,6 +484,14 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
         _perform();
     }
 
+    function getFtoPairTokenInfo() external view override returns (FtoPairTokenInfo memory) {
+        return FtoPairTokenInfo({
+            raisedToken: raisedToken,
+            launchedToken: launchedToken,
+            lpToken: lpToken
+        });
+    }
+
     /// @dev Changes the status of the FTO to Paused.
     /// This function can only be called by the FTOFactory.
     function pause() external override {
