@@ -55,6 +55,7 @@ abstract contract BurnableHook is NormalHook {
     }
 
     function _setBurnableHookParam(BurnableHookParam memory params) internal {
+        require(params.receiver != address(0), "Receiver is invalid.");
         raisedTokenReceiver[msg.sender] = params.receiver;
     }
 
