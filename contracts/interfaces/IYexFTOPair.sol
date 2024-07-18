@@ -9,30 +9,37 @@ interface IYexFTOPair is AutomationCompatibleInterface {
         Paused,
         Processing
     }
-    event DepositLaunchedToken(address indexed depositer, uint);
+
+    struct FtoPairTokenInfo {
+        address raisedToken;
+        address launchedToken;
+        address lpToken;
+    }
+
     event DepositRaisedToken(address indexed depositer, uint);
-    event Withdraw(address indexed withdrawer, uint);
     event ClaimLP(address indexed claimer, uint);
     event Refund(address indexed depositer, uint);
     event Paused(uint timestamp);
     event Resumed(uint timestamp);
     event ClaimLaunchedToken(address claimer, uint256 amount);
 
-    function depositRaisedToken(address depositer, uint256 amount) external;
+    function depositRaisedToken(address depositor, uint256 amount) external;
 
-    function depositLaunchedToken(address depositer, uint256 amount) external;
-
-    function withdraw(address withdrawer) external;
+    function withdrawRaisedToken() external;
 
     function claimLP(address claimer) external;
+
+    function claimLaunchedToken(address claimer) external;
 
     function pause() external;
 
     function resume() external;
 
-    function refundRaisedToken(address depositer) external;
+    function refundRaisedToken() external;
 
     function claimableLP(address claimer) external view returns (uint256);
+
+    function claimableLaunchedToken(address claimer) external view returns (uint256);
 
     function launchedTokenProvider() external view returns (address);
 
@@ -42,7 +49,5 @@ interface IYexFTOPair is AutomationCompatibleInterface {
 
     function withdrawFee(address feeTo) external;
 
-    function raisedToken() external view returns (address);
-
-    function launchedToken() external view returns (address);
+    function getFtoPairTokenInfo() external view returns (FtoPairTokenInfo memory);
 }

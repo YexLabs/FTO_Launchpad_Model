@@ -7,20 +7,19 @@ interface IYexFTOFacade {
     function deposit(
         address raisedToken,
         address launchedToken,
-        uint256 raisedTokenAmount,
-        uint256 launchedTokenAmount
+        uint256 raisedTokenAmount
     ) external;
-
-    function withdraw(address raisedToken, address launchedToken) external;
 
     function claimLP(address raisedToken, address launchedToken) external;
 
-    function refundRaisedToken(
-        address raisedToken,
-        address launchedToken
-    ) external;
+    function claimLaunchedToken(address raisedToken, address launchedToken) external;
 
     function claimableLP(
+        address raisedToken,
+        address launchedToken
+    ) external view returns (uint256);
+
+    function claimableLaunchedToken(
         address raisedToken,
         address launchedToken
     ) external view returns (uint256);

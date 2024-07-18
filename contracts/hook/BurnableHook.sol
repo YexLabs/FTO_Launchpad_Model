@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.16;
-import "../interfaces/IYexFTOPairV2.sol";
+import "../interfaces/IYexFTOPair.sol";
 import "../interfaces/IHenloDexPair.sol";
 import "./../libraries/TransferHelper.sol";
 import "./../core/YexFTOLaunchToken.sol";
@@ -55,11 +55,11 @@ abstract contract BurnableHook is NormalHook, Lock {
 
     // used for claim and burn, TODO: do we burn lp or burn launchedToken?
     function _withdrawRaisedToken(address ftoPair) internal {
-        uint256 lpAmount = IYexFTOPairV2(ftoPair).claimableLP(address(this));
+        uint256 lpAmount = IYexFTOPair(ftoPair).claimableLP(address(this));
         require(lpAmount > 0, "claimableLP cannot less than 0");
-        IYexFTOPairV2(ftoPair).withdrawRaisedToken();
+        IYexFTOPair(ftoPair).withdrawRaisedToken();
 
-        IYexFTOPairV2.FtoPairTokenInfo memory fPTInfo = IYexFTOPairV2(ftoPair).getFtoPairTokenInfo();
+        IYexFTOPair.FtoPairTokenInfo memory fPTInfo = IYexFTOPair(ftoPair).getFtoPairTokenInfo();
 
         // remove liquidity
         TransferHelper.safeTransfer(fPTInfo.lpToken, fPTInfo.lpToken, lpAmount);

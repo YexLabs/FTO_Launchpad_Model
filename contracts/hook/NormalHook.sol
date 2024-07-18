@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.16;
 import "../interfaces/IYexFTOHook.sol";
-import "../interfaces/IYexFTOFactoryV2.sol";
+import "../interfaces/IYexFTOFactory.sol";
 import "./../libraries/TransferHelper.sol";
 import "./../libraries/YexFTOHook.sol";
 import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
@@ -35,7 +35,7 @@ abstract contract NormalHook is ERC165, IYexFTOHook {
         uint256 raisingCycle,
         bytes calldata data
     ) public virtual {
-        IYexFTOFactoryV2(ftoFactory).createFTO(
+        IYexFTOFactory(ftoFactory).createFTO(
             raisedToken,
             name,
             symbol,
