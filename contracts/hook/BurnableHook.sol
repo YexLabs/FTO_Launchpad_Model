@@ -1,47 +1,85 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.16;
-import "../interfaces/IYexFTOPair.sol";
+import "../interfaces/IYexFTOPairV2.sol";
 import "../interfaces/IHenloDexPair.sol";
 import "./../libraries/TransferHelper.sol";
 import "./../core/YexFTOLaunchToken.sol";
 import "./NormalHook.sol";
+import "./Lock.sol";
 
-abstract contract BurnableHook is NormalHook {
-    function claimLP(address ftoPair, address lpToken) public virtual override {
-        _claimLPAndBurn(ftoPair, lpToken);
+abstract contract BurnableHook is NormalHook, Lock {
+
+    struct BurnableHookParam {
+        address  receiver;
+    }
+
+    mapping(address => address) public raisedTokenReceiver;
+
+    function createFTO(
+        address raisedToken,
+        string calldata name,
+        string calldata symbol,
+        uint256 amount,
+        uint256 launchedTokenPercent,
+        address poolHandler,
+        uint256 raisingCycle,
+        bytes calldata data
+    ) public virtual override lockFunction {
+        super.createFTO(
+            raisedToken,
+            name,
+            symbol,
+            amount,
+            launchedTokenPercent,
+            poolHandler,
+            raisingCycle,
+            data
+        );
+    }
+
+    function execute(
+        bytes calldata data
+    ) public virtual override onlyWhenLocked {
+        BurnableHookParam memory params = abi.decode(data, (BurnableHookParam));
+        _setBurnableHookParam(params);
+    }
+
+    function _setBurnableHookParam(BurnableHookParam memory params) internal {
+        require(params.receiver != address(0), "Receiver is invalid.");
+        raisedTokenReceiver[msg.sender] = params.receiver;
+    }
+
+    function withdrawRaisedToken(address ftoPair) public virtual override {
+        _withdrawRaisedToken(ftoPair);
     }
 
     // used for claim and burn, TODO: do we burn lp or burn launchedToken?
-    function _claimLPAndBurn(address ftoPair, address lpToken) internal {
-        uint256 lpAmount = IYexFTOPair(ftoPair).claimableLP(address(this));
+    function _withdrawRaisedToken(address ftoPair) internal {
+        uint256 lpAmount = IYexFTOPairV2(ftoPair).claimableLP(address(this));
         require(lpAmount > 0, "claimableLP cannot less than 0");
-        IYexFTOPair(ftoPair).claimLP(address(this));
+        IYexFTOPairV2(ftoPair).withdrawRaisedToken();
 
-        TransferHelper.safeTransfer(lpToken, lpToken, lpAmount);
+        IYexFTOPairV2.FtoPairTokenInfo memory fPTInfo = IYexFTOPairV2(ftoPair).getFtoPairTokenInfo();
 
         // remove liquidity
-        (uint amount0, uint amount1) = IHenloDexPair(lpToken).burn(
+        TransferHelper.safeTransfer(fPTInfo.lpToken, fPTInfo.lpToken, lpAmount);
+
+        (uint amount0, uint amount1) = IHenloDexPair(fPTInfo.lpToken).burn(
             address(this)
         );
 
-        address raisedToken = IYexFTOPair(ftoPair).raisedToken();
-        address launchedToken = IYexFTOPair(ftoPair).launchedToken();
-
-        (address token0, ) = raisedToken < launchedToken
-            ? (raisedToken, launchedToken)
-            : (launchedToken, raisedToken);
-
-        (, uint256 launchedAmount) = raisedToken == token0
+        (uint256 raisedAmount, uint256 launchedAmount) = fPTInfo.raisedToken < fPTInfo.launchedToken
             ? (amount0, amount1)
             : (amount1, amount0);
 
-        YexFTOLaunchToken(launchedToken).burn(launchedAmount);
+        YexFTOLaunchToken(fPTInfo.launchedToken).burn(launchedAmount);
+        TransferHelper.safeTransfer(fPTInfo.raisedToken, raisedTokenReceiver[ftoPair], raisedAmount);
     }
 
     function getFlags() public pure virtual override returns (YexFTOHook.Flags memory) {
         return YexFTOHook.Flags({
-            execute: false,
-            afterAddLiquidity: false,
+            execute: true,
+            liquidityHookOp: false,
             burnable: true
         });
     }

@@ -201,7 +201,7 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
          * This function will revert
          * if the depositor has not transferred [amount] of RaisedToken to address(this) before calling it.
          */
-        if (raisedTokenBalance != amount + depositedRaisedToken) {
+        if (raisedTokenBalance >= amount + depositedRaisedToken) {
             revert InvalidUpdate();
         }
 
@@ -231,20 +231,18 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
 
     /// @dev Transfer the entire amount of RaisedToken deposited back to the depositor's address.
     /// Can only be called if the FTO status is [Paused].
-    /// @param depositor Address of the depositor who requested a refund of RaisedToken.
-    function refundRaisedToken(
-        address depositor
-    ) external override lock whenPaused {
-        // Verify that the depositor is a valid address that had deposited RaisedToken.
-        uint256 deposit_amount = raisedTokenDeposit[depositor];
+    /// The depositor must call this function directly.
+    function refundRaisedToken() external override lock whenPaused {
+        // Verify that msg.sender is a valid address that had deposited RaisedToken.
+        uint256 deposit_amount = raisedTokenDeposit[msg.sender];
         require(deposit_amount > 0, "refundable amount is 0");
 
-        raisedTokenDeposit[depositor] = 0;
+        raisedTokenDeposit[msg.sender] = 0;
         depositedRaisedToken -= deposit_amount;
 
-        IERC20(raisedToken).transfer(depositor, deposit_amount);
+        IERC20(raisedToken).transfer(msg.sender, deposit_amount);
 
-        emit Refund(depositor, deposit_amount);
+        emit Refund(msg.sender, deposit_amount);
     }
 
     /// @dev Function that allows the [msg.sender] to claim LP tokens
@@ -439,7 +437,7 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
             FTOState = Status.Success;
 
             // Handling part for when the FTO uses a custom hook
-            if (hook.hasAfterAddLiquidity()) {
+            if (hook.hasLiquidityHookOp()) {
                 /**
                  * Integration part with the Vesting Hook
                  * vestAmount is the amount of LP tokens to be vested in the hook.
@@ -447,8 +445,7 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
                  */
                 uint256 vestAmount = (_totalLP * percent4hook) / 100;
                 IERC20(pair).approve(hook, vestAmount);
-                IYexFTOHook(hook).afterAddLiquidity(
-                    address(this),
+                IYexFTOHook(hook).liquidityHookOp(
                     pair,
                     vestAmount
                 );
@@ -485,6 +482,14 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
     function performUpkeep(bytes calldata) external override {
         require(_isUpkeepNeeded(), "fund raising not finished or paused");
         _perform();
+    }
+
+    function getFtoPairTokenInfo() external view override returns (FtoPairTokenInfo memory) {
+        return FtoPairTokenInfo({
+            raisedToken: raisedToken,
+            launchedToken: launchedToken,
+            lpToken: lpToken
+        });
     }
 
     /// @dev Changes the status of the FTO to Paused.

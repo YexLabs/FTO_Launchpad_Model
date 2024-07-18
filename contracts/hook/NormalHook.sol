@@ -47,9 +47,8 @@ abstract contract NormalHook is ERC165, IYexFTOHook {
         );
     }
 
-    function claimLP(
-        address /*ftoPair*/,
-        address /*lpToken*/
+    function withdrawRaisedToken(
+        address /*ftoPair*/
     ) external virtual {
         revert NotImplemented();
     }
@@ -58,8 +57,7 @@ abstract contract NormalHook is ERC165, IYexFTOHook {
         revert NotImplemented();
     }
 
-    function afterAddLiquidity(
-        address /*ftoPair*/,
+    function liquidityHookOp(
         address /*lpToken*/,
         uint256 /*lpAmount*/
     ) public virtual override {

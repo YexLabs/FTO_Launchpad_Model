@@ -14,11 +14,6 @@ interface IYexFTOFacadeV2 {
 
     function claimLaunchedToken(address raisedToken, address launchedToken) external;
 
-    function refundRaisedToken(
-        address raisedToken,
-        address launchedToken
-    ) external;
-
     function claimableLP(
         address raisedToken,
         address launchedToken

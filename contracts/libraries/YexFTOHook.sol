@@ -6,12 +6,12 @@ import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 library YexFTOHook {
     bytes4 private constant _INTERFACE_ID_INVALID = 0xffffffff;
     uint256 internal constant EXECUTE_FLAG = 1 << 159;
-    uint256 internal constant AFTER_ADD_LIQUIDITY_FLAG = 1 << 158;
+    uint256 internal constant LIQUIDITY_HOOK_OP_FLAG = 1 << 158;
     uint256 internal constant BURNABLE_FLAG = 1 << 157;
 
     struct Flags {
         bool execute;
-        bool afterAddLiquidity;
+        bool liquidityHookOp;
         bool burnable;
     }
 
@@ -21,8 +21,8 @@ library YexFTOHook {
         return uint256(uint160(address(hook))) & EXECUTE_FLAG != 0;
     }
 
-    function hasAfterAddLiquidity(address hook) internal pure returns (bool) {
-        return uint256(uint160(address(hook))) & AFTER_ADD_LIQUIDITY_FLAG != 0;
+    function hasLiquidityHookOp(address hook) internal pure returns (bool) {
+        return uint256(uint160(address(hook))) & LIQUIDITY_HOOK_OP_FLAG != 0;
     }
 
     function hasBurnable(address hook) internal pure returns (bool) {
@@ -32,7 +32,7 @@ library YexFTOHook {
     function validateHookAddress(address hook, Flags memory flags) internal pure {
         if(
             flags.execute != hasExecute(hook) ||
-            flags.afterAddLiquidity != hasAfterAddLiquidity(hook) ||
+            flags.liquidityHookOp != hasLiquidityHookOp(hook) ||
             flags.burnable != hasBurnable(hook)) {
             revert InvalidHookAddress();
         }

@@ -4,12 +4,17 @@ pragma solidity ^0.8.16;
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 import "./../libraries/TransferHelper.sol";
 import "./NormalHook.sol";
+import "./Lock.sol";
 
-abstract contract VestingHook is NormalHook {
+abstract contract VestingHook is NormalHook, Lock {
     event ERC20Released(address indexed token, uint256 amount);
 
-    uint256 public lock;
     mapping(address => uint256) private _erc20Released;
+
+    struct VestingHookParam {
+        uint64 startTimestamp;
+        uint64 durationSeconds;
+    }
 
     struct VestingInfo {
         address beneficiaryAddress;
@@ -18,17 +23,6 @@ abstract contract VestingHook is NormalHook {
         address lpToken;
     }
     mapping(address => VestingInfo) public getPair;
-
-    modifier onlyWhenLocked() {
-        require(lock == 1, "Not locked");
-        _;
-    }
-
-    modifier lockFunction() {
-        lock = 1;
-        _;
-        lock = 0;
-    }
 
     modifier onlyFTOPair() {
         require(
@@ -63,35 +57,30 @@ abstract contract VestingHook is NormalHook {
     function execute(
         bytes calldata data
     ) public virtual override onlyWhenLocked {
-        require(
-            getPair[msg.sender].beneficiaryAddress == address(0),
-            "pair have added."
-        );
+        VestingHookParam memory params = abi.decode(data, (VestingHookParam));
 
-        (uint64 startTimestamp, uint64 durationSeconds) = abi.decode(
-            data,
-            (uint64, uint64)
-        );
+        _setVestingHookParam(params);
+    }
 
-        require(startTimestamp > 0, "vesting time cannot less than 0");
+    function _setVestingHookParam(VestingHookParam memory params) internal {
+        require(params.startTimestamp > 0, "vesting time cannot less than 0");
 
         getPair[msg.sender] = VestingInfo(
             msg.sender,
-            startTimestamp,
-            durationSeconds,
+            params.startTimestamp,
+            params.durationSeconds,
             address(0)
         );
     }
 
-    function afterAddLiquidity(
-        address ftoPair,
+    function liquidityHookOp(
         address lpToken,
         uint256 lpAmount
     ) public virtual override onlyFTOPair {
-        getPair[ftoPair].lpToken = lpToken;
+        getPair[msg.sender].lpToken = lpToken;
         TransferHelper.safeTransferFrom(
             lpToken,
-            ftoPair,
+            msg.sender,
             address(this),
             lpAmount
         );
@@ -191,7 +180,7 @@ abstract contract VestingHook is NormalHook {
     function getFlags() public pure virtual override returns (YexFTOHook.Flags memory) {
         return YexFTOHook.Flags({
             execute: true,
-            afterAddLiquidity: true,
+            liquidityHookOp: true,
             burnable: false
         });
     }
