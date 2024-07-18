@@ -4,8 +4,9 @@ pragma solidity ^0.8.16;
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 import "./../libraries/TransferHelper.sol";
 import "./NormalHook.sol";
+import "./Lock.sol";
 
-abstract contract VestingHook is NormalHook {
+abstract contract VestingHook is NormalHook, Lock {
     event ERC20Released(address indexed token, uint256 amount);
 
     mapping(address => uint256) private _erc20Released;
@@ -22,17 +23,6 @@ abstract contract VestingHook is NormalHook {
         address lpToken;
     }
     mapping(address => VestingInfo) public getPair;
-
-    modifier onlyWhenLocked() virtual {
-        require(lock == 1, "Not locked");
-        _;
-    }
-
-    modifier lockFunction() virtual {
-        lock = 1;
-        _;
-        lock = 0;
-    }
 
     modifier onlyFTOPair() {
         require(

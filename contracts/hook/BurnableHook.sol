@@ -5,25 +5,15 @@ import "../interfaces/IHenloDexPair.sol";
 import "./../libraries/TransferHelper.sol";
 import "./../core/YexFTOLaunchToken.sol";
 import "./NormalHook.sol";
+import "./Lock.sol";
 
-abstract contract BurnableHook is NormalHook {
+abstract contract BurnableHook is NormalHook, Lock {
 
     struct BurnableHookParam {
         address  receiver;
     }
 
     mapping(address => address) public raisedTokenReceiver;
-
-    modifier onlyWhenLocked() virtual {
-        require(lock == 1, "Not locked");
-        _;
-    }
-
-    modifier lockFunction() virtual {
-        lock = 1;
-        _;
-        lock = 0;
-    }
 
     function createFTO(
         address raisedToken,

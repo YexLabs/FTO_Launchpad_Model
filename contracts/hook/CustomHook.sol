@@ -14,17 +14,6 @@ contract CustomHook is VestingHook, BurnableHook {
     constructor(address _ftoFactory) NormalHook(_ftoFactory) {
     }
 
-    modifier onlyWhenLocked() override(VestingHook, BurnableHook) {
-        require(lock == 1, "Not locked");
-        _;
-    }
-
-    modifier lockFunction() override(VestingHook, BurnableHook) {
-        lock = 1;
-        _;
-        lock = 0;
-    }
-
     function createFTO(
         address raisedToken,
         string calldata name,
