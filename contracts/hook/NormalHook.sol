@@ -6,19 +6,38 @@ import "./../libraries/TransferHelper.sol";
 import "./../libraries/YexFTOHook.sol";
 import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 
+/// @notice The base hook contract that all custom hooks used in the FTO Launchpad must inherit.
+/// @dev Custom hook contract developers are also encouraged to inherit from this contract when developing hooks.
 abstract contract NormalHook is ERC165, IYexFTOHook {
     error NotImplemented();
 
+    /// @notice The address of the YexFTOFactory
     address public immutable ftoFactory;
 
     constructor(address _ftoFactory) {
         ftoFactory = _ftoFactory;
 
+        /**
+         * It validates whether the address of the hook contract meets the conditions set by the hook's Flags.
+         * It uses the [validateHookAddress] function from the YexFTOHook library.
+         * If the validation fails, the deployment of the hook contract also fails.
+         * Hooks inheriting from NormalHook must pass this validation during deployment
+         *  to ensure the validity of their own address.
+         */
         YexFTOHook.validateHookAddress(address(this), getFlags());
     }
 
+    /**
+     * @dev Returns the YexFTOHook.Flags uniquely set for each hook.
+     * Each hook can override this function by inheriting it.
+     */
     function getFlags() public pure virtual returns (YexFTOHook.Flags memory);
 
+    /**
+     * @dev Overrides the standard function of ERC165
+     * External entities use this function
+     *  to check whether hooks inheriting from NormalHook support the hook interface.
+     */
     function supportsInterface(bytes4 interfaceId) public view virtual override(ERC165, IERC165) returns (bool) {
         return
             interfaceId == type(IYexFTOHook).interfaceId ||
