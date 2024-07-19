@@ -25,6 +25,24 @@ abstract contract NormalHook is ERC165, IYexFTOHook {
             super.supportsInterface(interfaceId);
     }
 
+    /**
+     * @dev A function that calls the createFTO function of YexFTOFactory
+     * When calling this function, the Token Launcher adds the hook parameter to [data],
+     *  implying that it intends to create an FTO Launchpad using the hook in YexFTOFactory.
+     * The FTO Launchpad recognizes this contract as the hook address.
+     * @param raisedToken Token address for investment in FTO fundraising
+     * @param name The name of the LaunchedToken
+     * @param symbol The symbol of the LaunchedToken
+     * @param amount The totalSupply of LaunchedToken, which is initially minted in its entirety
+     * @param launchedTokenPercent The proportion of LaunchedToken added to the AMM Pool
+     * @param poolHandler The router address of DEX
+     * @param raisingCycle Fundraising period (in seconds)
+     * @param data The bytes data to be passed to this hook contract after creating the FTO Launchpad
+     *               - This value must never be empty.
+     *               - If this value is empty,
+     *                  the Launchpad will recognize that the Token Launcher is not using a custom hook.
+     *               - The data must follow the decode format specific to this hook contract.
+     */
     function createFTO(
         address raisedToken,
         string calldata name,
