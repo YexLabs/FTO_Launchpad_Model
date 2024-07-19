@@ -484,6 +484,8 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
         _perform();
     }
 
+    /// @dev Returns the addresses of the three tokens managed by the FTOPair.
+    /// @return A struct containing the addresses of the raised token, launched token, and LP token
     function getFtoPairTokenInfo() external view override returns (FtoPairTokenInfo memory) {
         return FtoPairTokenInfo({
             raisedToken: raisedToken,
