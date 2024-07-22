@@ -24,15 +24,23 @@ contract YexFTOFactoryV2 is IYexFTOFactoryV2, WhiteList {
     mapping(address => mapping(address => address)) public getPair;
     mapping(address => bool) public isRaisedToken;
 
+    error NotParticipateInThisFTOPair();
+    error NotAllowedRaisedToken();
+    error IdenticalAddress(address launchedToken);
+    error YexFTOPairExists(address token0, address token1);
+    error TokenAddressIsZero();
+    error FeeToAddressIsZero();
+    error LpTokenAddressIsZero();
+
     /// @dev If a depositor participates in the FTO fundraising, add the FTOPair address to the eventParticipants[depositor] array.
     /// This function is called by YexFTOPair contract after the depositor deposits RaisedToken in the FTOPair.
     /// @param depositor Address of participant in the FTO fundraising
     /// @param ftoPair Address of FTOPair
     function addEvent(address depositor, address ftoPair) external override {
-        require(
-            IYexFTOPairV2(ftoPair).raisedTokenDeposit(depositor) != 0,
-            "Not participate in this rasing."
-        );
+        if(IYexFTOPairV2(ftoPair).raisedTokenDeposit(depositor) == 0) {
+            revert NotParticipateInThisFTOPair();
+        }
+
         if (events_map[depositor][ftoPair] == false) {
             events_map[depositor][ftoPair] = true;
             eventParticipants[depositor].push(ftoPair);
@@ -150,24 +158,25 @@ contract YexFTOFactoryV2 is IYexFTOFactoryV2, WhiteList {
         uint256 raisingCycle,
         bytes calldata data
     ) internal returns (address pair) {
-        require(
-            raisedToken != launchedToken,
-            "YexFTOFactory: IDENTICAL_ADDRESSES"
-        );
-        require(
-            isRaisedToken[raisedToken],
-            "YexFTOFactory: NOT_ALLOWED_BASE_TOKEN"
-        );
+        if(raisedToken == launchedToken) {
+            revert IdenticalAddress(launchedToken);
+        }
+
+        if(!isRaisedToken[raisedToken]) {
+            revert NotAllowedRaisedToken();
+        }
 
         (address token0, address token1) = raisedToken < launchedToken
             ? (raisedToken, launchedToken)
             : (launchedToken, raisedToken);
 
-        require(token0 != address(0), "YexFTOFactory: ZERO_ADDRESS");
-        require(
-            getPair[token0][token1] == address(0),
-            "YexFTOFactory: PAIR_EXISTS"
-        );
+        if(token0 == address (0)) {
+            revert TokenAddressIsZero();
+        }
+
+        if(getPair[token0][token1] != address(0)) {
+            revert YexFTOPairExists(token0, token1);
+        }
 
         /**
          * Deploy the FTOPair using create2
@@ -252,10 +261,16 @@ contract YexFTOFactoryV2 is IYexFTOFactoryV2, WhiteList {
         address launchedToken,
         address feeTo
     ) external onlyOwner {
-        require(feeTo != address(0), "YexFTOFactory: INVALID_FEE_TO_ADDRESS");
+        if(feeTo == address(0)) {
+            revert FeeToAddressIsZero();
+        }
+
         address pair = getPair[raisedToken][launchedToken];
         address lpToken = YexFTOPairV2(pair).lpToken();
-        require(lpToken != address(0), "YexFTOFactory: LP_TOKEN_ZERO_ADDRESS");
+
+        if(lpToken == address (0)) {
+            revert LpTokenAddressIsZero();
+        }
 
         uint256 fee = IERC20(lpToken).balanceOf(address(this));
         if (fee > 0) {
