@@ -170,7 +170,7 @@ contract YexFTOFactoryV2 is IYexFTOFactoryV2, WhiteList {
             ? (raisedToken, launchedToken)
             : (launchedToken, raisedToken);
 
-        if(token0 == address (0)) {
+        if(token0 == address(0)) {
             revert TokenAddressIsZero();
         }
 
@@ -268,7 +268,7 @@ contract YexFTOFactoryV2 is IYexFTOFactoryV2, WhiteList {
         address pair = getPair[raisedToken][launchedToken];
         address lpToken = YexFTOPairV2(pair).lpToken();
 
-        if(lpToken == address (0)) {
+        if(lpToken == address(0)) {
             revert LpTokenAddressIsZero();
         }
 

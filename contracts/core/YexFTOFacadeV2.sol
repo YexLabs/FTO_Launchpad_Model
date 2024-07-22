@@ -13,6 +13,8 @@ import "@openzeppelin/contracts-upgradeable/utils/cryptography/MerkleProofUpgrad
 contract YexFTOFacadeV2 is IYexFTOFacadeV2, Ownable {
     address public immutable override factory;
 
+    error InvalidRaisedTokenAmount();
+
     constructor(address _factory) {
         factory = _factory;
     }
@@ -131,10 +133,10 @@ contract YexFTOFacadeV2 is IYexFTOFacadeV2, Ownable {
         address launchedToken,
         uint256 raisedTokenAmount
     ) internal {
-        require(
-            raisedTokenAmount > 0,
-            "INSUFFICIENT_INPUT_AMOUNT"
-        );
+        if(raisedTokenAmount == 0) {
+            revert InvalidRaisedTokenAmount();
+        }
+
         address pair = YexFTOLibrary.pairFor(
             factory,
             raisedToken,

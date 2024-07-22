@@ -95,6 +95,8 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
     /// The hook is initially set in the initialize function.
     address public hook;
 
+    uint private unlocked = 1;
+
     /// @dev errors
     error Locked();
     error InvalidAmount();
@@ -107,7 +109,6 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
     error LaunchedTokenAlreadyClaimed(address claimer);
     error NotDepositor(address claimer);
 
-    uint private unlocked = 1;
     modifier lock() {
         if(unlocked == 0) {
             revert Locked();

@@ -21,6 +21,10 @@ abstract contract BurnableHook is NormalHook, Lock {
      */
     mapping(address => address) public raisedTokenReceiver;
 
+    /// @dev errors
+    error RaisedTokenReceiverIsZero();
+    error InvalidClaimableLPAmount();
+
     /// @inheritdoc NormalHook
     function createFTO(
         address raisedToken,
@@ -62,7 +66,10 @@ abstract contract BurnableHook is NormalHook, Lock {
     }
 
     function _setBurnableHookParam(BurnableHookParam memory params) internal {
-        require(params.receiver != address(0), "Receiver is invalid.");
+        if(params.receiver == address(0)) {
+            revert RaisedTokenReceiverIsZero();
+        }
+
         raisedTokenReceiver[msg.sender] = params.receiver;
     }
 
@@ -81,7 +88,9 @@ abstract contract BurnableHook is NormalHook, Lock {
          * If the claimable token amount is 0, revert immediately.
          */
         uint256 lpAmount = IYexFTOPairV2(ftoPair).claimableLP(address(this));
-        require(lpAmount > 0, "claimableLP cannot less than 0");
+        if(lpAmount == 0) {
+            revert InvalidClaimableLPAmount();
+        }
 
         /**
          * The LP tokens from the ftoPair are claimed and transferred to address(this).

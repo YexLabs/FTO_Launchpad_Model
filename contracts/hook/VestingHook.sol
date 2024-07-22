@@ -28,14 +28,16 @@ abstract contract VestingHook is NormalHook, Lock {
     }
     mapping(address => VestingInfo) public getPair;
 
+    error CallerIsNotFTOPair(address caller);
+    error InvalidVestingStartTime();
+
     /**
      * @dev The function is restricted to execute only if the msg.sender is the FTOPair contract.
      */
     modifier onlyFTOPair() {
-        require(
-            getPair[msg.sender].beneficiaryAddress != address(0),
-            "FTOPair not added or not authorized"
-        );
+        if(getPair[msg.sender].beneficiaryAddress == address(0)) {
+            revert CallerIsNotFTOPair(msg.sender);
+        }
         _;
     }
 
@@ -82,7 +84,9 @@ abstract contract VestingHook is NormalHook, Lock {
     }
 
     function _setVestingHookParam(VestingHookParam memory params) internal {
-        require(params.startTimestamp > 0, "vesting time cannot less than 0");
+        if(params.startTimestamp == 0) {
+            revert InvalidVestingStartTime();
+        }
 
         getPair[msg.sender] = VestingInfo(
             msg.sender,

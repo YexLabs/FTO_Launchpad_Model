@@ -4,8 +4,12 @@ pragma solidity ^0.8.16;
 abstract contract Lock {
     uint256 private lock;
 
+    error NotLocked();
+
     modifier onlyWhenLocked() virtual {
-        require(lock == 1, "Not locked");
+        if(lock == 0) {
+            revert NotLocked();
+        }
         _;
     }
 
