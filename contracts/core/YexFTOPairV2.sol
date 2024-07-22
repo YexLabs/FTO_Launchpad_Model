@@ -17,6 +17,14 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 contract YexFTOPairV2 is IYexFTOPairV2 {
     using YexFTOHook for address;
 
+    enum FTOPairErrorCode {
+        NotInProcessing,
+        Paused,
+        NotPaused,
+        NotSuccess,
+        NotFinishedOrPaused
+    }
+
     /// @dev The percentage of LP tokens received after adding liquidity to the AMM Pool that is paid to the Factory as a fee
     /// The decimal for feePercent is 0.
     uint8 public feePercent = 5;
@@ -87,24 +95,40 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
     /// The hook is initially set in the initialize function.
     address public hook;
 
+    /// @dev errors
+    error Locked();
     error InvalidAmount();
-    error InvalidUpdate();
+    error NotDepositedRaisedToken();
+    error FTOPairStatusError(FTOPairErrorCode code);
+    error Unauthorized(address caller);
+    error RaisingTimeIsOver(uint256 currentTime, uint256 endTime);
+    error ProjectOwnerDepositNotAllowed(address depositor);
+    error NoClaimAmountRemaining(uint256 lpAmount, uint256 claimedAmount);
+    error LaunchedTokenAlreadyClaimed(address claimer);
+    error NotDepositor(address claimer);
 
     uint private unlocked = 1;
     modifier lock() {
-        require(unlocked == 1, "YexFTO: LOCKED");
+        if(unlocked == 0) {
+            revert Locked();
+        }
+
         unlocked = 0;
         _;
         unlocked = 1;
     }
 
     modifier whenPaused() {
-        require(FTOState == Status.Paused, "Project is in progress");
+        if(FTOState != Status.Paused) {
+            revert FTOPairStatusError(FTOPairErrorCode.NotPaused);
+        }
         _;
     }
 
     modifier whenNotPaused() {
-        require(FTOState != Status.Paused, "Project is paused");
+        if(FTOState == Status.Paused) {
+            revert FTOPairStatusError(FTOPairErrorCode.Paused);
+        }
         _;
     }
 
@@ -131,7 +155,9 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
         bytes calldata data
     ) external {
         // This function reverts if the caller is not the FTOFactory.
-        require(msg.sender == factory, "YexFTOPair: FORBIDDEN");
+        if (msg.sender != factory) {
+            revert Unauthorized(msg.sender);
+        }
 
         raisedToken = _raisedToken;
         launchedToken = _launchedToken;
@@ -185,11 +211,15 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
         address depositor,
         uint256 amount
     ) external override whenNotPaused {
-        require(block.timestamp < endTime, "deposit: raising time is over");
-        require(
-            depositor != launchedTokenProvider,
-            "Project owner are not allowed to deposit with their launch"
-        );
+        if (block.timestamp >= endTime) {
+            revert RaisingTimeIsOver(block.timestamp, endTime);
+        }
+
+        if(depositor == launchedTokenProvider) {
+            revert ProjectOwnerDepositNotAllowed(depositor);
+        }
+
+
         if (amount == 0) {
             revert InvalidAmount();
         }
@@ -202,7 +232,7 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
          * if the depositor has not transferred [amount] of RaisedToken to address(this) before calling it.
          */
         if (raisedTokenBalance >= amount + depositedRaisedToken) {
-            revert InvalidUpdate();
+            revert NotDepositedRaisedToken();
         }
 
         /**
@@ -235,7 +265,9 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
     function refundRaisedToken() external override lock whenPaused {
         // Verify that msg.sender is a valid address that had deposited RaisedToken.
         uint256 deposit_amount = raisedTokenDeposit[msg.sender];
-        require(deposit_amount > 0, "refundable amount is 0");
+        if(deposit_amount == 0) {
+            revert InvalidAmount();
+        }
 
         raisedTokenDeposit[msg.sender] = 0;
         depositedRaisedToken -= deposit_amount;
@@ -250,9 +282,14 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
     /// This function can only be called after the fundraising is completed,
     ///   liquidity has been added to the Dex pool, and the FTO status is set to Success.
     function withdrawRaisedToken() external {
-        require(FTOState == Status.Success, "fund rasing not success.");
+        if(FTOState != Status.Success) {
+            revert FTOPairStatusError(FTOPairErrorCode.NotSuccess);
+        }
         // The part confirming whether msg.sender is the address of a hook contract with a burnable function:
-        require(msg.sender == hook && hook.hasBurnable(), "YexFTOPair: FORBIDDEN");
+        if(msg.sender != hook || !hook.hasBurnable()) {
+            revert Unauthorized(msg.sender);
+        }
+
         _transferLP(msg.sender);
     }
 
@@ -261,18 +298,21 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
     ///   liquidity has been added to the Dex pool, and the FTO status is set to Success.
     /// @param claimer The address claiming the LP tokens; the address receiving the LP tokens
     function claimLP(address claimer) external lock {
-        require(FTOState == Status.Success, "fund rasing not success.");
+        if(FTOState != Status.Success) {
+            revert FTOPairStatusError(FTOPairErrorCode.NotSuccess);
+        }
         /**
          * [claimer] must satisfy the following conditions:
          * 1. A depositor can be a [claimer].
          * 2. A launchedTokenProvider that does not use a custom hook can be a [claimer].
          * 3. If a custom hook is used but the hook does not have a burnable function, it can be a [claimer].
          */
-        require(
-            raisedTokenDeposit[claimer] != 0 ||
-            (claimer == launchedTokenProvider && !hook.hasBurnable()),
-            "only launched token provider or raised token depositer can claim."
-        );
+        if (
+            raisedTokenDeposit[claimer] == 0 &&
+            (claimer != launchedTokenProvider || hook.hasBurnable())
+        ) {
+            revert Unauthorized(claimer);
+        }
 
         _transferLP(claimer);
     }
@@ -287,7 +327,10 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
          */
         uint256 lpAmount = _calculateLPAmount(to);
         uint256 claimedAmount = claimedLp[to];
-        require(lpAmount > claimedAmount, "LP amount is too small.");
+
+        if(lpAmount <= claimedAmount) {
+            revert NoClaimAmountRemaining(lpAmount, claimedAmount);
+        }
 
         // claimableAmount is the actual amount of LP tokens being claimed by the claimer[to].
         uint256 claimableAmount = lpAmount - claimedAmount;
@@ -305,7 +348,10 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
     /// This value is calculated by subtracting the already claimed amount from lpAmount.
     /// @return The amount of LP tokens the claimer can claim at the current time.
     function claimableLP(address claimer) external view returns (uint256) {
-        require(FTOState == Status.Success, "fund rasing not success.");
+        if(FTOState != Status.Success) {
+            revert FTOPairStatusError(FTOPairErrorCode.NotSuccess);
+        }
+
         uint256 lpAmount = _calculateLPAmount(claimer);
         return lpAmount - claimedLp[claimer];
     }
@@ -347,16 +393,23 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
     /// The remaining LaunchedToken in the FTOPair is provided as a reward to RaisedToken depositors in the FTO.
     /// @param claimer Address of the RaisedToken depositor
     function claimLaunchedToken(address claimer) external lock {
-        require(FTOState == Status.Success, "fund rasing not success.");
-        require(
-            raisedTokenDeposit[claimer] != 0,
-            "only raised token depositer can claim."
-        );
-        require(!claimedLaunchedToken[claimer], "claimer has claimed.");
+        if(FTOState != Status.Success) {
+            revert FTOPairStatusError(FTOPairErrorCode.NotSuccess);
+        }
+
+        if(raisedTokenDeposit[claimer] == 0) {
+            revert NotDepositor(claimer);
+        }
+
+        if(claimedLaunchedToken[claimer]) {
+            revert LaunchedTokenAlreadyClaimed(claimer);
+        }
 
         // Calculates the amount of LaunchedToken the claimer can claim as a reward.
         uint256 amount = _calculateLaunchedTokenAmount(claimer);
-        require(amount > 0, "claim amount is too small.");
+        if(amount == 0) {
+            revert InvalidAmount();
+        }
 
         claimedLaunchedToken[claimer] = true;
 
@@ -369,7 +422,9 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
     function claimableLaunchedToken(
         address claimer
     ) external view returns (uint256) {
-        require(FTOState == Status.Success, "fund rasing not success.");
+        if(FTOState != Status.Success) {
+            revert FTOPairStatusError(FTOPairErrorCode.NotSuccess);
+        }
         uint256 amount = claimedLaunchedToken[claimer] ? 0 : _calculateLaunchedTokenAmount(claimer);
         return amount;
     }
@@ -480,7 +535,9 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
     /// If _isUpkeepNeeded() returns true, it executes the _perform() function.
     /// This function is a permissionless function that anyone can execute.
     function performUpkeep(bytes calldata) external override {
-        require(_isUpkeepNeeded(), "fund raising not finished or paused");
+        if(!_isUpkeepNeeded()) {
+            revert FTOPairStatusError(FTOPairErrorCode.NotFinishedOrPaused);
+        }
         _perform();
     }
 
@@ -497,8 +554,14 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
     /// @dev Changes the status of the FTO to Paused.
     /// This function can only be called by the FTOFactory.
     function pause() external override {
-        require(msg.sender == factory, "only factory can pause");
-        require(FTOState == Status.Processing, "Launchpad is not in progress");
+        if (msg.sender != factory) {
+            revert Unauthorized(msg.sender);
+        }
+
+        if(FTOState != Status.Processing) {
+            revert FTOPairStatusError(FTOPairErrorCode.NotInProcessing);
+        }
+
         FTOState = Status.Paused;
         emit Paused(block.timestamp);
     }
@@ -506,11 +569,14 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
     /// @dev Resumes the status of the FTO that was Paused.
     /// This function can only be called by the FTOFactory.
     function resume() external override {
-        require(msg.sender == factory, "only factory can resume");
-        require(
-            FTOState == Status.Paused,
-            "Launchpad is in processing or finished"
-        );
+        if (msg.sender != factory) {
+            revert Unauthorized(msg.sender);
+        }
+
+        if(FTOState != Status.Paused) {
+            revert FTOPairStatusError(FTOPairErrorCode.NotPaused);
+        }
+
         FTOState = Status.Processing;
         emit Resumed(block.timestamp);
     }
