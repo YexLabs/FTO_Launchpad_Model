@@ -6,9 +6,13 @@ import "./../libraries/TransferHelper.sol";
 import "./NormalHook.sol";
 import "./Lock.sol";
 
+/// @notice This is a hook contract that provides vesting functionality.
 abstract contract VestingHook is NormalHook, Lock {
     event ERC20Released(address indexed token, uint256 amount);
 
+    /**
+     * @dev Amount of released LP tokens
+     */
     mapping(address => uint256) private _erc20Released;
 
     struct VestingHookParam {
@@ -24,14 +28,20 @@ abstract contract VestingHook is NormalHook, Lock {
     }
     mapping(address => VestingInfo) public getPair;
 
+    error CallerIsNotFTOPair(address caller);
+    error InvalidVestingStartTime();
+
+    /**
+     * @dev The function is restricted to execute only if the msg.sender is the FTOPair contract.
+     */
     modifier onlyFTOPair() {
-        require(
-            getPair[msg.sender].beneficiaryAddress != address(0),
-            "FTOPair not added or not authorized"
-        );
+        if(getPair[msg.sender].beneficiaryAddress == address(0)) {
+            revert CallerIsNotFTOPair(msg.sender);
+        }
         _;
     }
 
+    /// @inheritdoc NormalHook
     function createFTO(
         address raisedToken,
         string calldata name,
@@ -54,6 +64,17 @@ abstract contract VestingHook is NormalHook, Lock {
         );
     }
 
+    /**
+     * @param data bytes data sent from the FTOPair
+     * @dev A function called by the FTOPair contract
+     * - Save the vesting information in getPair.
+     * - The [onlyWhenLocked] modifier ensures that this function is called only when lock is set to 1.
+     *   call [createFTO] function -> call [createFTO] function of the FtoFactory
+     *   -> call [initialize] function of FTOPair -> call [execute] function
+     *   msg.sender has to be FTOPair.
+     * - Decode data to obtain vesting-related info; [startTimestamp] and [durationSeconds].
+     * - Set the address of the msg.sender;FTOPair, as the beneficiaryAddress.
+     */
     function execute(
         bytes calldata data
     ) public virtual override onlyWhenLocked {
@@ -63,7 +84,9 @@ abstract contract VestingHook is NormalHook, Lock {
     }
 
     function _setVestingHookParam(VestingHookParam memory params) internal {
-        require(params.startTimestamp > 0, "vesting time cannot less than 0");
+        if(params.startTimestamp == 0) {
+            revert InvalidVestingStartTime();
+        }
 
         getPair[msg.sender] = VestingInfo(
             msg.sender,
@@ -73,6 +96,15 @@ abstract contract VestingHook is NormalHook, Lock {
         );
     }
 
+    /**
+     * @dev A function that performs the vesting of LP tokens for FTOPair.
+     * This function can only be called by the FTOPair contract.
+     * After successfully adding liquidity to the AMM pool upon completing the fundraising,
+     *  the FTOPair calls this function.
+     * It transfers the LP tokens from FTOPair to this contract.
+     * @param lpToken The liquidity token address of FTOPair
+     * @param lpAmount The amount of LP tokens to be vested
+     */
     function liquidityHookOp(
         address lpToken,
         uint256 lpAmount
@@ -177,6 +209,7 @@ abstract contract VestingHook is NormalHook, Lock {
         }
     }
 
+    /// @inheritdoc NormalHook
     function getFlags() public pure virtual override returns (YexFTOHook.Flags memory) {
         return YexFTOHook.Flags({
             execute: true,

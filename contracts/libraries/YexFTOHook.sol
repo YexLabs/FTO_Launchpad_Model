@@ -3,12 +3,24 @@ pragma solidity ^0.8.16;
 
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 
+/**
+ * @title Library for LaunchPad Hook
+ * @dev This library provides two basic functions for a given address:
+ *      - Using IERC165, it checks if the given address is a hook contract address.
+ *      - Assuming the given address is a hook contract address, it checks if the address has specific functions.
+ */
 library YexFTOHook {
+    /// @dev As per the ERC-165 spec, no interface should ever match 0xffffffff
     bytes4 private constant _INTERFACE_ID_INVALID = 0xffffffff;
+
     uint256 internal constant EXECUTE_FLAG = 1 << 159;
     uint256 internal constant LIQUIDITY_HOOK_OP_FLAG = 1 << 158;
     uint256 internal constant BURNABLE_FLAG = 1 << 157;
 
+    /**
+     * @dev If the hook has a vesting function, [execute] and [liquidityHookOp] are true.
+     * If the hook has a remove/burn function, [execute] and [burnable] are true.
+     */
     struct Flags {
         bool execute;
         bool liquidityHookOp;
@@ -17,18 +29,33 @@ library YexFTOHook {
 
     error InvalidHookAddress();
 
+    /**
+     * @dev If the 160th bit of [hook] is 1, it is determined that it has the execute function.
+     */
     function hasExecute(address hook) internal pure returns (bool) {
         return uint256(uint160(address(hook))) & EXECUTE_FLAG != 0;
     }
 
+    /**
+     * @dev If the 159th bit of [hook] is 1, it is determined that it has the liquidityHookOp function.
+     */
     function hasLiquidityHookOp(address hook) internal pure returns (bool) {
         return uint256(uint160(address(hook))) & LIQUIDITY_HOOK_OP_FLAG != 0;
     }
 
+    /**
+     * @dev If the 158th bit of [hook] is 1, it is determined that it has the remove/burn function.
+     */
     function hasBurnable(address hook) internal pure returns (bool) {
         return uint256(uint160(address(hook))) & BURNABLE_FLAG != 0;
     }
 
+    /**
+     * @dev It checks if the hook's address meets the conditions of the hook flags.
+     * If the validation fails, it reverts.
+     * @param hook the address of hook contract
+     * @param flags A Flags-type variable for validating the hook contract address
+     */
     function validateHookAddress(address hook, Flags memory flags) internal pure {
         if(
             flags.execute != hasExecute(hook) ||
