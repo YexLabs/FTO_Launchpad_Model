@@ -6,7 +6,9 @@
     "test": "mocha",
     "compile": "npm run clean && waffle waffle.json",
     "clean": "rimraf ./build/",
-    "deploy": "npm run compile && ts-node --script-mode scripts/deploy-factory.ts"
+    "deploy": "npm run compile && ts-node --script-mode scripts/deploy-factory.ts",
+    "docgen": "hardhat docgen",
+    "predocgen": "rm -rf cache && npx hardhat compile && rm -rf docs"
   },
   "repository": {
     "type": "git",
@@ -42,10 +44,12 @@
     "ethers": "^5.4.7",
     "hardhat": "^2.14.1",
     "hardhat-gas-reporter": "^1.0.8",
+    "hardhat-storage-layout": "^0.1.7",
     "mocha": "^10.2.0",
     "rimraf": "^4.4.1",
     "solc": "^0.8.16",
     "solidity-coverage": "^0.8.2",
+    "solidity-docgen": "^0.6.0-beta.36",
     "ts-node": "^10.9.1",
     "typechain": "^8.1.0",
     "typescript": "^5.0.2"

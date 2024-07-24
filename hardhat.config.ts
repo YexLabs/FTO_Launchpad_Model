@@ -1,8 +1,23 @@
 import "@nomicfoundation/hardhat-toolbox";
+import 'hardhat-storage-layout';
 import * as dotenv from "dotenv";
 import { HardhatUserConfig } from "hardhat/config";
 import "solidity-coverage";
+import 'solidity-docgen';
 dotenv.config();
+
+task('storageLayout', 'Prints the storage layout of the contract')
+  .addOptionalParam('contractname', 'The name of the contract')
+  .setAction(async (taskArgs, hre) => {
+    const contractName = taskArgs.contractname;
+    if (contractName) {
+      const layout = await hre.storageLayout.export(contractName);
+      console.log(JSON.stringify(layout, null, 2));
+    } else {
+      const layout = await hre.storageLayout.export();
+      console.log(JSON.stringify(layout, null, 2));
+    }
+  });
 
 const config: HardhatUserConfig = {
   gasReporter: {
@@ -178,5 +193,9 @@ const config: HardhatUserConfig = {
       },
     ],
   },
+  docgen: {
+      pages: 'files',
+      exclude: ['interfaces', 'libraries', 'periphery'],
+  }
 };
 export default config;
