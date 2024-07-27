@@ -110,7 +110,7 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
     error NotDepositor(address claimer);
 
     modifier lock() {
-        if(unlocked == 0) {
+        if (unlocked == 0) {
             revert Locked();
         }
 
@@ -120,14 +120,14 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
     }
 
     modifier whenPaused() {
-        if(FTOState != Status.Paused) {
+        if (FTOState != Status.Paused) {
             revert FTOPairStatusError(FTOPairErrorCode.NotPaused);
         }
         _;
     }
 
     modifier whenNotPaused() {
-        if(FTOState == Status.Paused) {
+        if (FTOState == Status.Paused) {
             revert FTOPairStatusError(FTOPairErrorCode.Paused);
         }
         _;
@@ -165,7 +165,9 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
         launchedTokenProvider = _launchedTokenProvider;
         launchPercent = _launchedTokenPercent;
         // LauncheToken has already been minted in the FTOPair.
-        depositedLaunchedToken = IERC20(_launchedToken).balanceOf(address(this));
+        depositedLaunchedToken = IERC20(_launchedToken).balanceOf(
+            address(this)
+        );
 
         // Calculates the end time of the FTO fundraising.
         endTime = block.timestamp + raisingCycle;
@@ -176,8 +178,12 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
          * If the data is not empty and _launchedTokenProvider supports the IYexFTOHook interface,
          *  _launchedTokenProvider is considered a hook, and this FTOPair is determined to use a custom hook.
          */
-        if (data.length > 0 &&
-            _launchedTokenProvider.supportsInterface(type(IYexFTOHook).interfaceId)) {
+        if (
+            data.length > 0 &&
+            _launchedTokenProvider.supportsInterface(
+                type(IYexFTOHook).interfaceId
+            )
+        ) {
             /**
              * _hookPercent: The percentage of LP tokens that are vested in hook contract
              * _hookParams: Data passed to the hook contract.
@@ -197,7 +203,7 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
              *      and the [execute] function records the vesting for this FTOPair in the hook.
              * _launchedTokenProvider.hasExecute(): Check if the execute function is defined in the hook contract.
              */
-            if(_launchedTokenProvider.hasExecute()) {
+            if (_launchedTokenProvider.hasExecute()) {
                 IYexFTOHook(_launchedTokenProvider).execute(_hookParams);
             }
         }
@@ -216,10 +222,9 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
             revert RaisingTimeIsOver(block.timestamp, endTime);
         }
 
-        if(depositor == launchedTokenProvider) {
+        if (depositor == launchedTokenProvider) {
             revert ProjectOwnerDepositNotAllowed(depositor);
         }
-
 
         if (amount == 0) {
             revert InvalidAmount();
@@ -232,7 +237,7 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
          * This function will revert
          * if the depositor has not transferred [amount] of RaisedToken to address(this) before calling it.
          */
-        if (raisedTokenBalance >= amount + depositedRaisedToken) {
+        if (raisedTokenBalance > amount + depositedRaisedToken) {
             revert NotDepositedRaisedToken();
         }
 
@@ -266,7 +271,7 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
     function refundRaisedToken() external override lock whenPaused {
         // Verify that msg.sender is a valid address that had deposited RaisedToken.
         uint256 deposit_amount = raisedTokenDeposit[msg.sender];
-        if(deposit_amount == 0) {
+        if (deposit_amount == 0) {
             revert InvalidAmount();
         }
 
@@ -283,11 +288,11 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
     /// This function can only be called after the fundraising is completed,
     ///   liquidity has been added to the Dex pool, and the FTO status is set to Success.
     function withdrawRaisedToken() external {
-        if(FTOState != Status.Success) {
+        if (FTOState != Status.Success) {
             revert FTOPairStatusError(FTOPairErrorCode.NotSuccess);
         }
         // The part confirming whether msg.sender is the address of a hook contract with a burnable function:
-        if(msg.sender != hook || !hook.hasBurnable()) {
+        if (msg.sender != hook || !hook.hasBurnable()) {
             revert Unauthorized(msg.sender);
         }
 
@@ -299,7 +304,7 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
     ///   liquidity has been added to the Dex pool, and the FTO status is set to Success.
     /// @param claimer The address claiming the LP tokens; the address receiving the LP tokens
     function claimLP(address claimer) external lock {
-        if(FTOState != Status.Success) {
+        if (FTOState != Status.Success) {
             revert FTOPairStatusError(FTOPairErrorCode.NotSuccess);
         }
         /**
@@ -329,7 +334,7 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
         uint256 lpAmount = _calculateLPAmount(to);
         uint256 claimedAmount = claimedLp[to];
 
-        if(lpAmount <= claimedAmount) {
+        if (lpAmount <= claimedAmount) {
             revert NoClaimAmountRemaining(lpAmount, claimedAmount);
         }
 
@@ -349,7 +354,7 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
     /// This value is calculated by subtracting the already claimed amount from lpAmount.
     /// @return The amount of LP tokens the claimer can claim at the current time.
     function claimableLP(address claimer) external view returns (uint256) {
-        if(FTOState != Status.Success) {
+        if (FTOState != Status.Success) {
             revert FTOPairStatusError(FTOPairErrorCode.NotSuccess);
         }
 
@@ -370,7 +375,8 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
          * The reason for calculating cumulativeLP each time is that the balance of address(this)
          *  may change as vested LP tokens are released and sent back to the FTOPair.
          */
-        uint256 cumulativeLP = IERC20(lpToken).balanceOf(address(this)) + totalClaimedLp;
+        uint256 cumulativeLP = IERC20(lpToken).balanceOf(address(this)) +
+            totalClaimedLp;
         /**
          * lpAmount = cumulativeLP / 2;
          * If the claimer is the launchedTokenProvider, they can claim 50% of the total LP tokens.
@@ -394,21 +400,21 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
     /// The remaining LaunchedToken in the FTOPair is provided as a reward to RaisedToken depositors in the FTO.
     /// @param claimer Address of the RaisedToken depositor
     function claimLaunchedToken(address claimer) external lock {
-        if(FTOState != Status.Success) {
+        if (FTOState != Status.Success) {
             revert FTOPairStatusError(FTOPairErrorCode.NotSuccess);
         }
 
-        if(raisedTokenDeposit[claimer] == 0) {
+        if (raisedTokenDeposit[claimer] == 0) {
             revert NotDepositor(claimer);
         }
 
-        if(claimedLaunchedToken[claimer]) {
+        if (claimedLaunchedToken[claimer]) {
             revert LaunchedTokenAlreadyClaimed(claimer);
         }
 
         // Calculates the amount of LaunchedToken the claimer can claim as a reward.
         uint256 amount = _calculateLaunchedTokenAmount(claimer);
-        if(amount == 0) {
+        if (amount == 0) {
             revert InvalidAmount();
         }
 
@@ -423,10 +429,12 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
     function claimableLaunchedToken(
         address claimer
     ) external view returns (uint256) {
-        if(FTOState != Status.Success) {
+        if (FTOState != Status.Success) {
             revert FTOPairStatusError(FTOPairErrorCode.NotSuccess);
         }
-        uint256 amount = claimedLaunchedToken[claimer] ? 0 : _calculateLaunchedTokenAmount(claimer);
+        uint256 amount = claimedLaunchedToken[claimer]
+            ? 0
+            : _calculateLaunchedTokenAmount(claimer);
         return amount;
     }
 
@@ -501,10 +509,7 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
                  */
                 uint256 vestAmount = (_totalLP * percent4hook) / 100;
                 IERC20(pair).approve(hook, vestAmount);
-                IYexFTOHook(hook).liquidityHookOp(
-                    pair,
-                    vestAmount
-                );
+                IYexFTOHook(hook).liquidityHookOp(pair, vestAmount);
             }
         } else {
             FTOState = Status.Failed;
@@ -536,7 +541,7 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
     /// If _isUpkeepNeeded() returns true, it executes the _perform() function.
     /// This function is a permissionless function that anyone can execute.
     function performUpkeep(bytes calldata) external override {
-        if(!_isUpkeepNeeded()) {
+        if (!_isUpkeepNeeded()) {
             revert FTOPairStatusError(FTOPairErrorCode.NotFinishedOrPaused);
         }
         _perform();
@@ -544,12 +549,18 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
 
     /// @dev Returns the addresses of the three tokens managed by the FTOPair.
     /// @return A struct containing the addresses of the raised token, launched token, and LP token
-    function getFtoPairTokenInfo() external view override returns (FtoPairTokenInfo memory) {
-        return FtoPairTokenInfo({
-            raisedToken: raisedToken,
-            launchedToken: launchedToken,
-            lpToken: lpToken
-        });
+    function getFtoPairTokenInfo()
+        external
+        view
+        override
+        returns (FtoPairTokenInfo memory)
+    {
+        return
+            FtoPairTokenInfo({
+                raisedToken: raisedToken,
+                launchedToken: launchedToken,
+                lpToken: lpToken
+            });
     }
 
     /// @dev Changes the status of the FTO to Paused.
@@ -559,7 +570,7 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
             revert Unauthorized(msg.sender);
         }
 
-        if(FTOState != Status.Processing) {
+        if (FTOState != Status.Processing) {
             revert FTOPairStatusError(FTOPairErrorCode.NotInProcessing);
         }
 
@@ -574,7 +585,7 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
             revert Unauthorized(msg.sender);
         }
 
-        if(FTOState != Status.Paused) {
+        if (FTOState != Status.Paused) {
             revert FTOPairStatusError(FTOPairErrorCode.NotPaused);
         }
 
