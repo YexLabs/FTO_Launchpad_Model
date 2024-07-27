@@ -237,7 +237,7 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
          * This function will revert
          * if the depositor has not transferred [amount] of RaisedToken to address(this) before calling it.
          */
-        if (raisedTokenBalance > amount + depositedRaisedToken) {
+        if (raisedTokenBalance < amount + depositedRaisedToken) {
             revert NotDepositedRaisedToken();
         }
 

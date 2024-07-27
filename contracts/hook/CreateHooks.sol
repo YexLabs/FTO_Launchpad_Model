@@ -3,6 +3,12 @@ pragma solidity ^0.8.16;
 import "./CustomHook.sol";
 import "../libraries/HookMiner.sol";
 
+/**
+ * Just a demo for create Hook
+ * @title
+ * @author
+ * @notice
+ */
 contract CreateHooks {
     uint256 internal constant EXECUTE_FLAG = 1 << 159;
     uint256 internal constant LIQUIDITY_HOOK_OP_FLAG = 1 << 158;
@@ -37,16 +43,6 @@ contract CreateHooks {
         assembly {
             pair := create2(0, add(bytecode, 32), mload(bytecode), salt)
         }
-        // CustomHook(pair).createFTO(
-        //     address(this),
-        //     "test",
-        //     "test",
-        //     0,
-        //     10,
-        //     address(this),
-        //     12,
-        //     "0x"
-        // );
         pairAddr = pair;
     }
 }
