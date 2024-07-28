@@ -112,7 +112,7 @@ describe("YexFTO", function () {
         raisingCycle,
         "0x"
       )
-    ).to.revertedWith("YexFTOFactory: NOT_ALLOWED_BASE_TOKEN");
+    ).to.revertedWithCustomError(ftoFactory, "NotAllowedRaisedToken");
 
     // 2. test create FTO with an wallet which not in whitelist
     await expect(
@@ -181,15 +181,17 @@ describe("YexFTO", function () {
           launchedToken,
           await usdt.balanceOf(addr1.address)
         )
-    ).to.be.rejectedWith(
-      "Project owner are not allowed to deposit with their launch"
-    );
+    )
+      .to.revertedWithCustomError(ftoPair, "ProjectOwnerDepositNotAllowed")
+      .withArgs(addr1.address);
 
     // 5. deposit
     const deposit_amount = ethers.utils.parseUnits("100", 18);
     await usdt.connect(addr2).faucet();
     let usdt_balance_addr2 = await usdt.connect(addr2).balanceOf(addr2.address);
     await usdt.connect(addr2).approve(ftoFacade.address, deposit_amount);
+
+    console.log(await ftoPair.depositedRaisedToken());
 
     await ftoFacade
       .connect(addr2)
@@ -200,9 +202,9 @@ describe("YexFTO", function () {
     );
 
     // refundRaisedToken when not paused will failed
-    await expect(
-      ftoFacade.connect(addr2).refundRaisedToken(usdt.address, launchedToken)
-    ).to.be.rejectedWith("Project is in progress");
+    await expect(ftoPair.connect(addr2).refundRaisedToken())
+      .to.be.revertedWithCustomError(ftoPair, "FTOPairStatusError")
+      .withArgs(2);
 
     // 6. deposit usdt when pause
     await ftoFactory.pause(usdt.address, launchedToken);
@@ -214,19 +216,19 @@ describe("YexFTO", function () {
       ftoFacade
         .connect(addr2)
         .deposit(usdt.address, launchedToken, deposit_amount)
-    ).to.be.rejectedWith("Project is paused");
+    )
+      .to.be.revertedWithCustomError(ftoPair, "FTOPairStatusError")
+      .withArgs(1);
 
     // 7. refund when paused
 
     // can't pause when project is paused.
-    await expect(
-      ftoFactory.pause(usdt.address, launchedToken)
-    ).to.be.rejectedWith("Launchpad is not in progress");
+    await expect(ftoFactory.pause(usdt.address, launchedToken))
+      .to.be.revertedWithCustomError(ftoPair, "FTOPairStatusError")
+      .withArgs(0);
 
     usdt_balance_addr2 = await usdt.connect(addr2).balanceOf(addr2.address);
-    await ftoFacade
-      .connect(addr2)
-      .refundRaisedToken(usdt.address, launchedToken);
+    await ftoPair.connect(addr2).refundRaisedToken();
     expect(usdt_balance_addr2.add(deposit_amount)).to.equal(
       await usdt.connect(addr2).balanceOf(addr2.address)
     );
@@ -245,14 +247,14 @@ describe("YexFTO", function () {
     expect(usdt_balance_addr2.sub(deposit_amount)).to.equal(
       await usdt.connect(addr2).balanceOf(addr2.address)
     );
-    // 9. perform
 
-    await expect(ftoPair.performUpkeep("0x")).to.be.rejectedWith(
-      "fund raising not finished or paused"
-    );
-    await expect(
-      ftoFacade.connect(addr2).claimLP(usdt.address, launchedToken)
-    ).to.be.rejectedWith("fund rasing not success.");
+    // 9. perform
+    await expect(ftoPair.performUpkeep("0x"))
+      .to.be.revertedWithCustomError(ftoPair, "FTOPairStatusError")
+      .withArgs(4);
+    await expect(ftoFacade.connect(addr2).claimLP(usdt.address, launchedToken))
+      .to.be.revertedWithCustomError(ftoPair, "FTOPairStatusError")
+      .withArgs(3);
 
     // Move time forward and mine a new block
     await network.provider.send("evm_increaseTime", [raisingCycle + 5]);
@@ -388,12 +390,13 @@ describe("YexFTO", function () {
     );
 
     // 5. claim
-    await expect(ftoPair.claimLaunchedToken(owner.address)).to.be.revertedWith(
-      "only raised token depositer can claim."
-    );
-    await expect(ftoPair.claimLaunchedToken(addr1.address)).to.be.revertedWith(
-      "only raised token depositer can claim."
-    );
+    await expect(
+      ftoPair.claimLaunchedToken(owner.address)
+    ).to.be.revertedWithCustomError(ftoPair, "NotDepositor");
+
+    await expect(
+      ftoPair.claimLaunchedToken(addr1.address)
+    ).to.be.revertedWithCustomError(ftoPair, "NotDepositor");
 
     await ftoPair.claimLaunchedToken(addr2.address);
     await ftoPair.claimLaunchedToken(addr3.address);
@@ -405,8 +408,8 @@ describe("YexFTO", function () {
       await launchedTokenContract.balanceOf(addr3.address)
     );
 
-    await expect(ftoPair.claimLaunchedToken(addr3.address)).to.be.revertedWith(
-      "claimer has claimed."
-    );
+    await expect(
+      ftoPair.claimLaunchedToken(addr3.address)
+    ).to.be.revertedWithCustomError(ftoPair, "LaunchedTokenAlreadyClaimed");
   });
 });

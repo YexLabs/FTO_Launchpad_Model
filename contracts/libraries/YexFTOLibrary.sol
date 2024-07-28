@@ -17,7 +17,7 @@ library YexFTOLibrary {
         address raisedToken,
         address launchedToken
     ) internal pure returns (address token0, address token1) {
-        if(raisedToken == launchedToken) {
+        if (raisedToken == launchedToken) {
             revert IdenticalAddress(launchedToken);
         }
 
@@ -25,7 +25,7 @@ library YexFTOLibrary {
             ? (raisedToken, launchedToken)
             : (launchedToken, raisedToken);
 
-        if(token0 == address(0)) {
+        if (token0 == address(0)) {
             revert TokenAddressIsZero();
         }
     }
@@ -48,7 +48,7 @@ library YexFTOLibrary {
                             hex"ff",
                             factory,
                             keccak256(abi.encodePacked(token0, token1)),
-                            hex"c5af5ba3a0fea5c9dd31463f5d4b5d69cd68df6548ff727cbdce76c3a47b66f1" // init code hash
+                            hex"3646b19eee2cf5bc2f143dd7dda1681be956c26e2cbe9961c2fc2acea9d1e6ce" // init code hash
                         )
                     )
                 )

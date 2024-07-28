@@ -22,6 +22,7 @@ interface IYexFTOPairV2 is AutomationCompatibleInterface {
     event Paused(uint timestamp);
     event Resumed(uint timestamp);
     event ClaimLaunchedToken(address claimer, uint256 amount);
+    event Perform(uint status);
 
     function depositRaisedToken(address depositor, uint256 amount) external;
 
@@ -39,7 +40,9 @@ interface IYexFTOPairV2 is AutomationCompatibleInterface {
 
     function claimableLP(address claimer) external view returns (uint256);
 
-    function claimableLaunchedToken(address claimer) external view returns (uint256);
+    function claimableLaunchedToken(
+        address claimer
+    ) external view returns (uint256);
 
     function launchedTokenProvider() external view returns (address);
 
@@ -49,5 +52,8 @@ interface IYexFTOPairV2 is AutomationCompatibleInterface {
 
     function withdrawFee(address feeTo) external;
 
-    function getFtoPairTokenInfo() external view returns (FtoPairTokenInfo memory);
+    function getFtoPairTokenInfo()
+        external
+        view
+        returns (FtoPairTokenInfo memory);
 }

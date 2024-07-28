@@ -5,6 +5,7 @@ import { YexFTOFacadeV2 } from "../../typechain-types/contracts/core/YexFTOFacad
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
 import {
+  CreateHooks,
   CustomHook,
   HenloDexFactory,
   HenloDexPair,
@@ -52,8 +53,16 @@ describe("YexFTO", function () {
     )) as YexFTOFacadeV2;
 
     // CustomHook
+    const CreateHooks = await ethers.getContractFactory("CreateHooks");
+    const createHooks = (await CreateHooks.deploy()) as CreateHooks;
+    const findResult = await createHooks.findSalt(ftoFactory.address);
+
+    const customHookAddr = findResult[0];
+
+    await createHooks.createHook(findResult[1], ftoFactory.address);
+
     const CustomHook = await ethers.getContractFactory("CustomHook");
-    customHook = (await CustomHook.deploy(ftoFactory.address)) as CustomHook;
+    customHook = CustomHook.attach(customHookAddr) as CustomHook;
     await ftoFactory.batchAddWhiteList([customHook.address]);
 
     // HenloDexFactory
@@ -106,8 +115,8 @@ describe("YexFTO", function () {
     const durationSeconds = 10000; // vesting duaration
 
     const hook_params = ethers.utils.defaultAbiCoder.encode(
-      ["uint64", "uint64"],
-      [startTimestamp, durationSeconds]
+      ["uint64", "uint64", "address"],
+      [startTimestamp, durationSeconds, owner.address]
     );
 
     const data = ethers.utils.defaultAbiCoder.encode(
@@ -206,8 +215,8 @@ describe("YexFTO", function () {
     const durationSeconds = 10000; // vesting duaration
 
     const hook_params = ethers.utils.defaultAbiCoder.encode(
-      ["uint64", "uint64"],
-      [startTimestamp, durationSeconds]
+      ["uint64", "uint64", "address"],
+      [startTimestamp, durationSeconds, owner.address]
     );
 
     const data = ethers.utils.defaultAbiCoder.encode(
@@ -299,8 +308,8 @@ describe("YexFTO", function () {
     const durationSeconds = 10000; // vesting duaration
 
     const hook_params = ethers.utils.defaultAbiCoder.encode(
-      ["uint64", "uint64"],
-      [startTimestamp, durationSeconds]
+      ["uint64", "uint64", "address"],
+      [startTimestamp, durationSeconds, owner.address]
     );
 
     const data = ethers.utils.defaultAbiCoder.encode(
