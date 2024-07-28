@@ -514,6 +514,7 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
         } else {
             FTOState = Status.Failed;
         }
+        emit Perform(uint(FTOState));
     }
 
     /// @dev Check if the fundraising end time has passed and if the FTO status is not Paused.
