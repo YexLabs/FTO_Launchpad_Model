@@ -37,7 +37,7 @@ contract YexFTOFactoryV2 is IYexFTOFactoryV2, WhiteList {
     /// @param depositor Address of participant in the FTO fundraising
     /// @param ftoPair Address of FTOPair
     function addEvent(address depositor, address ftoPair) external override {
-        if(IYexFTOPairV2(ftoPair).raisedTokenDeposit(depositor) == 0) {
+        if (IYexFTOPairV2(ftoPair).raisedTokenDeposit(depositor) == 0) {
             revert NotParticipateInThisFTOPair();
         }
 
@@ -158,11 +158,11 @@ contract YexFTOFactoryV2 is IYexFTOFactoryV2, WhiteList {
         uint256 raisingCycle,
         bytes calldata data
     ) internal returns (address pair) {
-        if(raisedToken == launchedToken) {
+        if (raisedToken == launchedToken) {
             revert IdenticalAddress(launchedToken);
         }
 
-        if(!isRaisedToken[raisedToken]) {
+        if (!isRaisedToken[raisedToken]) {
             revert NotAllowedRaisedToken();
         }
 
@@ -170,11 +170,11 @@ contract YexFTOFactoryV2 is IYexFTOFactoryV2, WhiteList {
             ? (raisedToken, launchedToken)
             : (launchedToken, raisedToken);
 
-        if(token0 == address(0)) {
+        if (token0 == address(0)) {
             revert TokenAddressIsZero();
         }
 
-        if(getPair[token0][token1] != address(0)) {
+        if (getPair[token0][token1] != address(0)) {
             revert YexFTOPairExists(token0, token1);
         }
 
@@ -261,14 +261,14 @@ contract YexFTOFactoryV2 is IYexFTOFactoryV2, WhiteList {
         address launchedToken,
         address feeTo
     ) external onlyOwner {
-        if(feeTo == address(0)) {
+        if (feeTo == address(0)) {
             revert FeeToAddressIsZero();
         }
 
         address pair = getPair[raisedToken][launchedToken];
         address lpToken = YexFTOPairV2(pair).lpToken();
 
-        if(lpToken == address(0)) {
+        if (lpToken == address(0)) {
             revert LpTokenAddressIsZero();
         }
 

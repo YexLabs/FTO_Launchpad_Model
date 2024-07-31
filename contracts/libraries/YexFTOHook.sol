@@ -56,11 +56,15 @@ library YexFTOHook {
      * @param hook the address of hook contract
      * @param flags A Flags-type variable for validating the hook contract address
      */
-    function validateHookAddress(address hook, Flags memory flags) internal pure {
-        if(
+    function validateHookAddress(
+        address hook,
+        Flags memory flags
+    ) internal pure {
+        if (
             flags.execute != hasExecute(hook) ||
             flags.liquidityHookOp != hasLiquidityHookOp(hook) ||
-            flags.burnable != hasBurnable(hook)) {
+            flags.burnable != hasBurnable(hook)
+        ) {
             revert InvalidHookAddress();
         }
     }
@@ -71,9 +75,14 @@ library YexFTOHook {
      *
      * See {IERC165-supportsInterface}.
      */
-    function supportsInterface(address account, bytes4 interfaceId) internal view returns (bool) {
+    function supportsInterface(
+        address account,
+        bytes4 interfaceId
+    ) internal view returns (bool) {
         // query support of both ERC165 as per the spec and support of _interfaceId
-        return supportsERC165(account) && supportsERC165InterfaceUnchecked(account, interfaceId);
+        return
+            supportsERC165(account) &&
+            supportsERC165InterfaceUnchecked(account, interfaceId);
     }
 
     /**
@@ -83,7 +92,10 @@ library YexFTOHook {
         // Any contract that implements ERC165 must explicitly indicate support of
         // InterfaceId_ERC165 and explicitly indicate non-support of InterfaceId_Invalid
         return
-            supportsERC165InterfaceUnchecked(account, type(IERC165).interfaceId) &&
+            supportsERC165InterfaceUnchecked(
+                account,
+                type(IERC165).interfaceId
+            ) &&
             !supportsERC165InterfaceUnchecked(account, _INTERFACE_ID_INVALID);
     }
 
@@ -102,16 +114,29 @@ library YexFTOHook {
      *
      * Interface identification is specified in ERC-165.
      */
-    function supportsERC165InterfaceUnchecked(address account, bytes4 interfaceId) internal view returns (bool) {
+    function supportsERC165InterfaceUnchecked(
+        address account,
+        bytes4 interfaceId
+    ) internal view returns (bool) {
         // prepare call
-        bytes memory encodedParams = abi.encodeWithSelector(IERC165.supportsInterface.selector, interfaceId);
+        bytes memory encodedParams = abi.encodeWithSelector(
+            IERC165.supportsInterface.selector,
+            interfaceId
+        );
 
         // perform static call
         bool success;
         uint256 returnSize;
         uint256 returnValue;
         assembly {
-            success := staticcall(30000, account, add(encodedParams, 0x20), mload(encodedParams), 0x00, 0x20)
+            success := staticcall(
+                30000,
+                account,
+                add(encodedParams, 0x20),
+                mload(encodedParams),
+                0x00,
+                0x20
+            )
             returnSize := returndatasize()
             returnValue := mload(0x00)
         }

@@ -347,11 +347,11 @@ contract HenloDexRouterV2 is IHenloDexRouterV1 {
                 ? HenloDexLibrary.pairFor(factory, output, path[i + 2])
                 : _to;
             IHenloDexPair(HenloDexLibrary.pairFor(factory, input, output)).swap(
-                    amount0Out,
-                    amount1Out,
-                    to,
-                    new bytes(0)
-                );
+                amount0Out,
+                amount1Out,
+                to,
+                new bytes(0)
+            );
         }
     }
 

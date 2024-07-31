@@ -13,8 +13,7 @@ contract CustomHook is VestingHook, BurnableHook {
         address receiver;
     }
 
-    constructor(address _ftoFactory) NormalHook(_ftoFactory) {
-    }
+    constructor(address _ftoFactory) NormalHook(_ftoFactory) {}
 
     /// @inheritdoc NormalHook
     function createFTO(
@@ -55,7 +54,9 @@ contract CustomHook is VestingHook, BurnableHook {
     ) public override(VestingHook, BurnableHook) onlyWhenLocked {
         CustomHookParam memory params = abi.decode(data, (CustomHookParam));
 
-        _setVestingHookParam(VestingHookParam(params.startTimestamp, params.durationSeconds));
+        _setVestingHookParam(
+            VestingHookParam(params.startTimestamp, params.durationSeconds)
+        );
         _setBurnableHookParam(BurnableHookParam(params.receiver));
     }
 
@@ -75,11 +76,17 @@ contract CustomHook is VestingHook, BurnableHook {
     }
 
     /// @inheritdoc NormalHook
-    function getFlags() public pure override(VestingHook, BurnableHook) returns (YexFTOHook.Flags memory) {
-        return YexFTOHook.Flags({
-            execute: true,
-            liquidityHookOp: true,
-            burnable: true
-        });
+    function getFlags()
+        public
+        pure
+        override(VestingHook, BurnableHook)
+        returns (YexFTOHook.Flags memory)
+    {
+        return
+            YexFTOHook.Flags({
+                execute: true,
+                liquidityHookOp: true,
+                burnable: true
+            });
     }
 }

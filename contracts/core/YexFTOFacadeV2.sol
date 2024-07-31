@@ -64,11 +64,7 @@ contract YexFTOFacadeV2 is IYexFTOFacadeV2, Ownable {
         address launchedToken,
         uint256 raisedTokenAmount
     ) external override {
-        _deposit(
-            raisedToken,
-            launchedToken,
-            raisedTokenAmount
-        );
+        _deposit(raisedToken, launchedToken, raisedTokenAmount);
     }
 
     /// @notice Claim the LP tokens from the FTO corresponding to your share.
@@ -133,7 +129,7 @@ contract YexFTOFacadeV2 is IYexFTOFacadeV2, Ownable {
         address launchedToken,
         uint256 raisedTokenAmount
     ) internal {
-        if(raisedTokenAmount == 0) {
+        if (raisedTokenAmount == 0) {
             revert InvalidRaisedTokenAmount();
         }
 

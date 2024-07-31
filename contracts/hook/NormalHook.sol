@@ -38,7 +38,9 @@ abstract contract NormalHook is ERC165, IYexFTOHook {
      * External entities use this function
      *  to check whether hooks inheriting from NormalHook support the hook interface.
      */
-    function supportsInterface(bytes4 interfaceId) public view virtual override(ERC165, IERC165) returns (bool) {
+    function supportsInterface(
+        bytes4 interfaceId
+    ) public view virtual override(ERC165, IERC165) returns (bool) {
         return
             interfaceId == type(IYexFTOHook).interfaceId ||
             super.supportsInterface(interfaceId);
@@ -84,9 +86,7 @@ abstract contract NormalHook is ERC165, IYexFTOHook {
         );
     }
 
-    function withdrawRaisedToken(
-        address /*ftoPair*/
-    ) external virtual {
+    function withdrawRaisedToken(address /*ftoPair*/) external virtual {
         revert NotImplemented();
     }
 

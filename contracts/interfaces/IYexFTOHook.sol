@@ -20,8 +20,5 @@ interface IYexFTOHook is IERC165 {
 
     function execute(bytes calldata params) external;
 
-    function liquidityHookOp(
-        address lpToken,
-        uint256 lpAmount
-    ) external;
+    function liquidityHookOp(address lpToken, uint256 lpAmount) external;
 }
