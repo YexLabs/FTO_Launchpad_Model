@@ -1,8 +1,12 @@
 {
-  "name": "honeypotfinance",
+  "name": "fto-launchpad-model",
   "version": "1.0.0",
   "description": "**honeypotfinance** is a DEX project built on honeyswap v3",
   "scripts": {
+    "lint:check": "eslint . --ext js,ts",
+    "lint:fix": "eslint --fix . --ext js,ts",
+    "prettier:check": "prettier --check '**/*.{ts,js,json,sol}'",
+    "prettier:fix": "prettier --write '**/*.{ts,js,json,sol}'",
     "test": "mocha",
     "compile": "npm run clean && waffle waffle.json",
     "clean": "rimraf ./build/",
@@ -10,19 +14,19 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/honeypotfinance/honeypotfinance.git"
+    "url": "https://github.com/YexLabs/FTO_Launchpad_Model"
   },
   "keywords": [],
   "files": [
-    "contracts",
-    "build"
+    "/contracts/**/*.sol",
+    "/build/**/*"
   ],
-  "author": "",
+  "author": "YexLabs",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/honeypotfinance/honeypotfinance/issues"
+    "url": "https://github.com/YexLabs/FTO_Launchpad_Model/issues"
   },
-  "homepage": "https://github.com/honeypotfinance/honeypotfinance#readme",
+  "homepage": "https://github.com/YexLabs/FTO_Launchpad_Model#readme",
   "devDependencies": {
     "@ethersproject/abi": "^5.4.7",
     "@ethersproject/providers": "^5.4.7",
@@ -36,13 +40,20 @@
     "@typechain/hardhat": "^6.1.2",
     "@types/chai": "^4.3.4",
     "@types/mocha": "^10.0.1",
+    "@typescript-eslint/eslint-plugin": "^7.18.0",
+    "@typescript-eslint/parser": "^7.18.0",
     "chai": "^4.2.0",
+    "eslint": "^8.57.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-prettier": "^5.2.1",
     "ethereum-waffle": "^4.0.10",
     "ethereumjs-util": "^7.1.5",
     "ethers": "^5.4.7",
     "hardhat": "^2.14.1",
     "hardhat-gas-reporter": "^1.0.8",
     "mocha": "^10.2.0",
+    "prettier": "^3.3.3",
+    "prettier-plugin-solidity": "^1.3.1",
     "rimraf": "^4.4.1",
     "solc": "^0.8.16",
     "solidity-coverage": "^0.8.2",
