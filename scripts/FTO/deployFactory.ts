@@ -1,7 +1,7 @@
-import * as dotenv from "dotenv";
+import * as dotenv from 'dotenv';
 
-import { ethers } from "hardhat";
-import { verify } from "../verify-contract";
+import { ethers } from 'hardhat';
+import { verify } from '../verify-contract';
 dotenv.config();
 
 async function main() {
@@ -10,26 +10,26 @@ async function main() {
 
 async function deployFTOFactory() {
   const [deployer] = await ethers.getSigners();
-  console.log("Deploying contracts with the account:", deployer.address);
-  console.log("Account balance:", (await deployer.getBalance()).toString());
+  console.log('Deploying contracts with the account:', deployer.address);
+  console.log('Account balance:', (await deployer.getBalance()).toString());
 
-  const FTOFactory = await ethers.getContractFactory("YexFTOFactoryV2");
+  const FTOFactory = await ethers.getContractFactory('YexFTOFactoryV2');
   const ftoFactoryContract = await FTOFactory.deploy([]);
   console.log(
-    `YexFTOFactoryV2 contract deployed to ${ftoFactoryContract.address}`
+    `YexFTOFactoryV2 contract deployed to ${ftoFactoryContract.address}`,
   );
 
   await ftoFactoryContract.deployed();
 
-  console.log("Waiting for blocks confirmations...");
+  console.log('Waiting for blocks confirmations...');
   await ftoFactoryContract.deployTransaction.wait(10);
-  console.log("Confirmed!");
+  console.log('Confirmed!');
 
-  console.log("INIT_HASH_CODE", await ftoFactoryContract.INIT_CODE_PAIR_HASH());
+  console.log('INIT_HASH_CODE', await ftoFactoryContract.INIT_CODE_PAIR_HASH());
   const v1 = verify(
     ftoFactoryContract.address,
-    "contracts/core/YexFTOFactoryV2.sol:YexFTOFactoryV2",
-    []
+    'contracts/core/YexFTOFactoryV2.sol:YexFTOFactoryV2',
+    [],
   );
   await v1;
 
