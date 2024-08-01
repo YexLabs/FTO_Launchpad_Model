@@ -1,7 +1,7 @@
 import { ethers } from 'hardhat';
 
 const deployContracts = async () => {
-  const [feeToSetter, address1] = await ethers.getSigners();
+  const [feeToSetter] = await ethers.getSigners();
   const usdt = await ethers
     .getContractFactory('ERC20Faucet')
     .then((factory) => factory.deploy('usdt', 'usdt'));

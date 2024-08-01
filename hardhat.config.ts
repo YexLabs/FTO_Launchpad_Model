@@ -2,6 +2,7 @@ import '@nomicfoundation/hardhat-toolbox';
 import * as dotenv from 'dotenv';
 import { HardhatUserConfig } from 'hardhat/config';
 import 'solidity-coverage';
+import 'solidity-docgen';
 dotenv.config();
 
 const config: HardhatUserConfig = {
@@ -177,6 +178,10 @@ const config: HardhatUserConfig = {
         },
       },
     ],
+  },
+  docgen: {
+    pages: 'files',
+    exclude: ['interfaces', 'libraries', 'periphery'],
   },
 };
 export default config;
