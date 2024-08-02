@@ -26,12 +26,17 @@ const deployContracts = async () => {
     .getContractFactory('HenloDexRouterV2')
     .then((factory) => factory.deploy(henloDexFactory.address, usdt.address));
 
+  const mockToken = await ethers
+        .getContractFactory('ERC20Faucet')
+        .then((factory) => factory.deploy('mock', 'mock'));
+
   return {
     usdt,
     yexFTOFactory,
     yexFTOFacade,
     henloDexFactory,
     henloDexRouter,
+    mockToken
   };
 };
 
