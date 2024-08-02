@@ -26,9 +26,9 @@ const deployContracts = async () => {
     .getContractFactory('HenloDexRouterV2')
     .then((factory) => factory.deploy(henloDexFactory.address, usdt.address));
 
-  const mockToken = await ethers
-        .getContractFactory('ERC20Faucet')
-        .then((factory) => factory.deploy('mock', 'mock'));
+  const bera = await ethers
+    .getContractFactory('ERC20Faucet')
+    .then((factory) => factory.deploy('bera', 'bera'));
 
   return {
     usdt,
@@ -36,7 +36,7 @@ const deployContracts = async () => {
     yexFTOFacade,
     henloDexFactory,
     henloDexRouter,
-    mockToken
+    bera,
   };
 };
 
