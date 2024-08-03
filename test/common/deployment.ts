@@ -40,4 +40,14 @@ const deployContracts = async () => {
   };
 };
 
-export { deployContracts };
+const deployERC20Token = async (name: string, symbol: string) => {
+  const token = await ethers
+    .getContractFactory('ERC20Faucet')
+    .then((factory) => factory.deploy(name, symbol));
+
+  await token.deployed();
+
+  return token;
+};
+
+export { deployContracts, deployERC20Token };
