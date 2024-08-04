@@ -2,7 +2,7 @@ import { expect } from 'chai';
 import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { deployContracts, deployERC20Token } from '../common/deployment';
-import { FTOParams, Status } from '../common/constants';
+import { Status } from '../common/constants';
 import { createFTO } from './../common/helpers';
 
 describe('FTO Factory test', function () {
@@ -158,7 +158,7 @@ describe('FTO Factory test', function () {
       ).to.revertedWithCustomError(yexFTOPair, 'FTOPairStatusError');
     });
 
-    it('should get FTO pair provider', async function () {
+    it('should get FTO token launcher', async function () {
       const launchedToken = await yexFTOPair.launchedToken();
       expect(
         await yexFTOFactory.getFTOPairProvider(usdt.address, launchedToken),

@@ -28,3 +28,16 @@ export const createFTO = async (
       params.data || FTOParams.DATA,
     );
 };
+
+export async function generateSignersAndAmounts(
+  amounts: number[],
+  decimal: number,
+): Promise<[SignerWithAddress[], ethers.BigNumber[]]> {
+  const allSigners = await ethers.getSigners();
+  const requiredSigners = allSigners.slice(2, 2 + amounts.length);
+  const bigAmounts = amounts.map((amount) =>
+    ethers.utils.parseUnits(amount.toString(), decimal),
+  );
+
+  return [requiredSigners, bigAmounts];
+}
