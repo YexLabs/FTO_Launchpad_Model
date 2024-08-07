@@ -41,3 +41,24 @@ export async function generateSignersAndAmounts(
 
   return [requiredSigners, bigAmounts];
 }
+
+export function calculateLpAmount(
+  amounts: BigNumber[],
+  index: number,
+  totalLp: BigNumber,
+): BigNumber {
+  const raisedTokenDeposit = amounts[index];
+  const depositedRaisedToken = amounts.reduce(
+    (acc, amount) => acc.add(amount),
+    ethers.BigNumber.from(0),
+  );
+  return raisedTokenDeposit.mul(totalLp.div(2)).div(depositedRaisedToken);
+}
+
+export function calculateFeeAmount(
+  lpBalance: BigNumber,
+  feePercent: number,
+): BigNumber {
+  const totalLP = lpBalance.mul(100).div(100 - feePercent);
+  return totalLP.sub(lpBalance);
+}
