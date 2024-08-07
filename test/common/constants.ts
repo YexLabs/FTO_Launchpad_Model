@@ -3,7 +3,7 @@ export const FTOParams = {
   SYMBOL: 'TST',
   AMOUNT: ethers.utils.parseUnits('1000000000', 18),
   LAUNCHED_TOKEN_PERCENT: 50,
-  RAISING_CYCLE: 86400, // 1 day
+  RAISING_CYCLE: 100,
   DATA: '0x',
 };
 

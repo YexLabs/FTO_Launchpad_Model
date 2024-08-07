@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { deployContracts } from '../common/deployment';
 import { createFTO, generateSignersAndAmounts } from './../common/helpers';
-import { Status } from '../common/constants';
+import { Status, FTOParams } from '../common/constants';
 
 describe('FTO Pair test', function () {
   let usdt: Contract;
@@ -75,6 +75,12 @@ describe('FTO Pair test', function () {
         await yexFTOFacade.getFTOState(usdt.address, launchedToken),
       ).to.equal(Status.Processing);
     });
+
+    it("should have depositedLaunchedToken equal to launched token's initial supply", async () => {
+      expect(await yexFTOPair.depositedLaunchedToken()).to.equal(
+        FTOParams.AMOUNT,
+      );
+    });
   });
 
   describe('FTO Pair: Deposit raised token', function () {
@@ -126,5 +132,76 @@ describe('FTO Pair test', function () {
         );
       }
     });
+  });
+
+  describe('FTO Pair: Refund raised token', function () {
+    it('should not refund when ftopair is not paused', async () => {
+      await expect(
+        yexFTOPair.connect(depositors[0]).refundRaisedToken(),
+      ).to.revertedWithCustomError(yexFTOPair, 'FTOPairStatusError');
+    });
+
+    it('should refund raised token', async () => {
+      await yexFTOFactory
+        .connect(factoryOwner)
+        .pause(usdt.address, launchedToken);
+
+      const prevDepositedRaisedToken = await yexFTOPair.depositedRaisedToken();
+
+      await yexFTOPair.connect(depositors[0]).refundRaisedToken();
+
+      const afterDepositedRaisedToken = await yexFTOPair.depositedRaisedToken();
+
+      await yexFTOFactory
+        .connect(factoryOwner)
+        .resume(usdt.address, launchedToken);
+
+      expect(afterDepositedRaisedToken).to.equal(
+        prevDepositedRaisedToken.sub(amounts[0]),
+      );
+    });
+  });
+
+  describe('FTO Pair: Perform', function () {
+    it('should return false in checkUpKeep', async () => {
+      const [upkeepNeeded] = await yexFTOPair.checkUpkeep('0x');
+
+      expect(upkeepNeeded).to.be.false;
+    });
+
+    it('should return true in checkUpKeep after raising cycle', async () => {
+      await network.provider.send('evm_increaseTime', [
+        FTOParams.RAISING_CYCLE + 5,
+      ]);
+      await network.provider.send('evm_mine');
+
+      const [upkeepNeeded] = await yexFTOPair.checkUpkeep('0x');
+      expect(upkeepNeeded).to.be.true;
+    });
+
+    it('should execute perform', async () => {
+      await expect(yexFTOPair.performUpkeep('0x'))
+        .to.emit(yexFTOPair, 'Perform')
+        .withArgs(Status.Success);
+    });
+
+    if (
+      ('should deploy LP token correctly after performUpkeep',
+      async () => {
+        const lpTokenAddress = await yexFTOPair.lpToken();
+        expect(lpTokenAddress).to.be.properAddress;
+
+        const henloDexPair = await ethers.getContractAt(
+          'HenloDexPair',
+          lpTokenAddress,
+        );
+
+        const token0 = await henloDexPair.token0();
+        const token1 = await henloDexPair.token1();
+
+        expect(token0).to.be.oneOf([usdt.address, launchedToken]);
+        expect(token1).to.be.oneOf([usdt.address, launchedToken]);
+      })
+    );
   });
 });
