@@ -55,6 +55,23 @@ export function calculateLpAmount(
   return raisedTokenDeposit.mul(totalLp.div(2)).div(depositedRaisedToken);
 }
 
+export function calculateLaunchedTokenAmount(
+  amounts: BigNumber[],
+  index: number,
+): BigNumber {
+  const raisedTokenDeposit = amounts[index];
+  const depositedRaisedToken = amounts.reduce(
+    (acc, amount) => acc.add(amount),
+    ethers.BigNumber.from(0),
+  );
+  const poolLaunchedTokenAmount = FTOParams.AMOUNT.sub(
+    FTOParams.AMOUNT.mul(FTOParams.LAUNCHED_TOKEN_PERCENT).div(100),
+  );
+  return raisedTokenDeposit
+    .mul(poolLaunchedTokenAmount)
+    .div(depositedRaisedToken);
+}
+
 export function calculateFeeAmount(
   lpBalance: BigNumber,
   feePercent: number,

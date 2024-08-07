@@ -5,6 +5,7 @@ import {
   generateSignersAndAmounts,
   calculateLpAmount,
   calculateFeeAmount,
+  calculateLaunchedTokenAmount,
 } from './../common/helpers';
 import { Status, FTOParams } from '../common/constants';
 
@@ -15,6 +16,7 @@ describe('FTO Pair test', function () {
   let henloDexFactory: Contract;
   let henloDexRouter: Contract;
   let yexFTOPair: Contract;
+  let yexFTOLaunchedToken: Contract;
 
   let tokenLauncher: SignerWithAddress, factoryOwner: SignerWithAddress;
   let launchedToken;
@@ -38,7 +40,10 @@ describe('FTO Pair test', function () {
     const createdPair = await yexFTOFactory.allPairs(ftoPairsLength - 1);
     yexFTOPair = await ethers.getContractAt('YexFTOPairV2', createdPair);
     launchedToken = await yexFTOPair.launchedToken();
-
+    yexFTOLaunchedToken = await ethers.getContractAt(
+      'YexFTOLaunchToken',
+      launchedToken,
+    );
     await usdt.connect(tokenLauncher).faucet();
 
     [depositors, amounts] = await generateSignersAndAmounts(
@@ -313,6 +318,35 @@ describe('FTO Pair test', function () {
       expect(await lpToken.balanceOf(tokenLauncher.address)).to.equal(
         prevTokenProviderLpBalance.add(expectedLpAmount),
       );
+    });
+  });
+
+  describe('FTO Pair: Claim launched token', function () {
+    it('should return correct claimable launched token amount for each depositor', async function () {
+      for (let i = 0; i < depositors.length; i++) {
+        const expectedAmount = calculateLaunchedTokenAmount(amounts, i);
+        const claimableAmount = await yexFTOFacade
+          .connect(depositors[i])
+          .claimableLaunchedToken(usdt.address, launchedToken);
+        expect(claimableAmount).to.equal(expectedAmount);
+      }
+    });
+
+    it('should claim launched token for each depositor', async function () {
+      for (let i = 0; i < depositors.length; i++) {
+        const prevDepositorBalance = await yexFTOLaunchedToken.balanceOf(
+          depositors[i].address,
+        );
+
+        await yexFTOFacade
+          .connect(depositors[i])
+          .claimLaunchedToken(usdt.address, launchedToken);
+
+        const expectedAmount = calculateLaunchedTokenAmount(amounts, i);
+        expect(
+          await yexFTOLaunchedToken.balanceOf(depositors[i].address),
+        ).to.equal(prevDepositorBalance.add(expectedAmount));
+      }
     });
   });
 });
