@@ -1,4 +1,8 @@
 [profile.default]
+solc_version = '0.8.16'
+optimizer = true
+optimizer-runs = 200
+bytecode_hash = "none"
 src = "contracts"
 out = "artifacts"
 libs = ["node_modules", "lib"]

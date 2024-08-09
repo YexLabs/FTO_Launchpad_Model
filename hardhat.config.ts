@@ -12,6 +12,9 @@ const config: HardhatUserConfig = {
   solidity: {
     version: '0.8.16',
     settings: {
+      metadata: {
+        bytecodeHash: 'none',
+      },
       optimizer: {
         enabled: true,
         runs: 200,
