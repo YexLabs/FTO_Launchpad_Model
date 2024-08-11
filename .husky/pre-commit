@@ -1,3 +1,5 @@
 npm run prettier:check
 npm run lint:check
 npm run solhint:check
+npm run test
+npm run test:forge

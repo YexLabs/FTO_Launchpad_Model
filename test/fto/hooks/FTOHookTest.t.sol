@@ -28,6 +28,8 @@ abstract contract FTOHookTest is Test {
     HenloDexFactory public henloDexFactory;
     HenloDexRouterV2 public henloDexRouter;
 
+    uint256[] public depositAmounts;
+
     function _deployContracts() internal virtual {
         usdt = new ERC20Faucet("usdt", "usdt");
         yexFTOFactory = new YexFTOFactoryV2();
@@ -61,5 +63,22 @@ abstract contract FTOHookTest is Test {
         uint256 ftoPairsLength = yexFTOFactory.allPairsLength();
         address createdPair = yexFTOFactory.allPairs(ftoPairsLength - 1);
         yexFTOPair = YexFTOPairV2(createdPair);
+    }
+
+    function _depositRaisedTokens() internal virtual {
+        require(depositAmounts.length > 0, "Amounts array is empty");
+        for (uint256 i = 0; i < depositAmounts.length; i++) {
+            address depositor = vm.addr(i + 1);
+            vm.startPrank(depositor);
+            usdt.faucet();
+            usdt.approve(address(yexFTOFacade), depositAmounts[i]);
+
+            yexFTOFacade.deposit(
+                address(usdt),
+                yexFTOPair.launchedToken(),
+                depositAmounts[i]
+            );
+            vm.stopPrank();
+        }
     }
 }
