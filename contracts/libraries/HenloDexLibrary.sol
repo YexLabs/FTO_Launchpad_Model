@@ -36,7 +36,7 @@ library HenloDexLibrary {
                             hex"ff",
                             factory,
                             keccak256(abi.encodePacked(token0, token1)),
-                            hex"83620c1dfbdbbe51ec2062477d020618ef2d2ed9d39f381cdbcb28cbd212f5cf" // init code hash
+                            hex"706782f834f21a02f0db3469ba146f571221b29af5edb6cdabc7b03512763152" // init code hash
                         )
                     )
                 )

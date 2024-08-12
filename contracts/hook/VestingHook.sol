@@ -35,7 +35,7 @@ abstract contract VestingHook is NormalHook, Lock {
      * @dev The function is restricted to execute only if the msg.sender is the FTOPair contract.
      */
     modifier onlyFTOPair() {
-        if(getPair[msg.sender].beneficiaryAddress == address(0)) {
+        if (getPair[msg.sender].beneficiaryAddress == address(0)) {
             revert CallerIsNotFTOPair(msg.sender);
         }
         _;
@@ -84,7 +84,7 @@ abstract contract VestingHook is NormalHook, Lock {
     }
 
     function _setVestingHookParam(VestingHookParam memory params) internal {
-        if(params.startTimestamp == 0) {
+        if (params.startTimestamp == 0) {
             revert InvalidVestingStartTime();
         }
 
@@ -210,11 +210,18 @@ abstract contract VestingHook is NormalHook, Lock {
     }
 
     /// @inheritdoc NormalHook
-    function getFlags() public pure virtual override returns (YexFTOHook.Flags memory) {
-        return YexFTOHook.Flags({
-            execute: true,
-            liquidityHookOp: true,
-            burnable: false
-        });
+    function getFlags()
+        public
+        pure
+        virtual
+        override
+        returns (YexFTOHook.Flags memory)
+    {
+        return
+            YexFTOHook.Flags({
+                execute: true,
+                liquidityHookOp: true,
+                burnable: false
+            });
     }
 }

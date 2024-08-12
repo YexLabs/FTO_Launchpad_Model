@@ -9,9 +9,8 @@ import "./Lock.sol";
 
 /// @notice This is a hook contract that provides the functionality to remove LP tokens and burn launched tokens.
 abstract contract BurnableHook is NormalHook, Lock {
-
     struct BurnableHookParam {
-        address  receiver;
+        address receiver;
     }
 
     /**
@@ -66,7 +65,7 @@ abstract contract BurnableHook is NormalHook, Lock {
     }
 
     function _setBurnableHookParam(BurnableHookParam memory params) internal {
-        if(params.receiver == address(0)) {
+        if (params.receiver == address(0)) {
             revert RaisedTokenReceiverIsZero();
         }
 
@@ -88,7 +87,7 @@ abstract contract BurnableHook is NormalHook, Lock {
          * If the claimable token amount is 0, revert immediately.
          */
         uint256 lpAmount = IYexFTOPairV2(ftoPair).claimableLP(address(this));
-        if(lpAmount == 0) {
+        if (lpAmount == 0) {
             revert InvalidClaimableLPAmount();
         }
 
@@ -97,7 +96,8 @@ abstract contract BurnableHook is NormalHook, Lock {
          */
         IYexFTOPairV2(ftoPair).withdrawRaisedToken();
 
-        IYexFTOPairV2.FtoPairTokenInfo memory fPTInfo = IYexFTOPairV2(ftoPair).getFtoPairTokenInfo();
+        IYexFTOPairV2.FtoPairTokenInfo memory fPTInfo = IYexFTOPairV2(ftoPair)
+            .getFtoPairTokenInfo();
 
         /**
          * Remove the liquidity of lpAmount from the AMM pool.
@@ -108,7 +108,8 @@ abstract contract BurnableHook is NormalHook, Lock {
             address(this)
         );
 
-        (uint256 raisedAmount, uint256 launchedAmount) = fPTInfo.raisedToken < fPTInfo.launchedToken
+        (uint256 raisedAmount, uint256 launchedAmount) = fPTInfo.raisedToken <
+            fPTInfo.launchedToken
             ? (amount0, amount1)
             : (amount1, amount0);
         /**
@@ -120,15 +121,26 @@ abstract contract BurnableHook is NormalHook, Lock {
          * Withdraw the RaisedToken to the receiver registered by the Token Launcher
          *  at the time of FTOPair initialize.
          */
-        TransferHelper.safeTransfer(fPTInfo.raisedToken, raisedTokenReceiver[ftoPair], raisedAmount);
+        TransferHelper.safeTransfer(
+            fPTInfo.raisedToken,
+            raisedTokenReceiver[ftoPair],
+            raisedAmount
+        );
     }
 
     /// @inheritdoc NormalHook
-    function getFlags() public pure virtual override returns (YexFTOHook.Flags memory) {
-        return YexFTOHook.Flags({
-            execute: true,
-            liquidityHookOp: false,
-            burnable: true
-        });
+    function getFlags()
+        public
+        pure
+        virtual
+        override
+        returns (YexFTOHook.Flags memory)
+    {
+        return
+            YexFTOHook.Flags({
+                execute: true,
+                liquidityHookOp: false,
+                burnable: true
+            });
     }
 }

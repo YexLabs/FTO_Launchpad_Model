@@ -7,7 +7,7 @@ abstract contract Lock {
     error NotLocked();
 
     modifier onlyWhenLocked() virtual {
-        if(lock == 0) {
+        if (lock == 0) {
             revert NotLocked();
         }
         _;
