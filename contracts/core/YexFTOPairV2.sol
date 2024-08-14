@@ -26,8 +26,8 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
     }
 
     /// @dev The percentage of LP tokens received after adding liquidity to the AMM Pool that is paid to the Factory as a fee
-    /// The decimal for feePercent is 0.
-    uint8 public feePercent = 5;
+    /// The decimal for feePercent is 3.
+    uint8 public constant feePercent = 3;
 
     /// @dev Address of Raised Token
     /// This value is set when the initialize function is called by the FTOFactory and does not change once set.
@@ -108,6 +108,7 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
     error NoClaimAmountRemaining(uint256 lpAmount, uint256 claimedAmount);
     error LaunchedTokenAlreadyClaimed(address claimer);
     error NotDepositor(address claimer);
+    error TransferFailed();
 
     modifier lock() {
         if (unlocked == 0) {
@@ -174,12 +175,15 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
 
         otherPool = _otherPool;
 
+        if (data.length <= 0) {
+            return;
+        }
+
         /**
          * If the data is not empty and _launchedTokenProvider supports the IYexFTOHook interface,
          *  _launchedTokenProvider is considered a hook, and this FTOPair is determined to use a custom hook.
          */
         if (
-            data.length > 0 &&
             _launchedTokenProvider.supportsInterface(
                 type(IYexFTOHook).interfaceId
             )
@@ -260,7 +264,12 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
          * The addEvent function in the FTOFactory updates the storage variable
          *  to reflect that the depositor has participated in this FTOPair.
          */
-        IYexFTOFactoryV2(factory).addEvent(depositor, address(this));
+        IYexFTOFactoryV2(factory).addEvent(
+            depositor,
+            address(this),
+            address(raisedToken),
+            address(launchedToken)
+        );
 
         emit DepositRaisedToken(depositor, amount);
     }
@@ -278,7 +287,16 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
         raisedTokenDeposit[msg.sender] = 0;
         depositedRaisedToken -= deposit_amount;
 
-        IERC20(raisedToken).transfer(msg.sender, deposit_amount);
+        bool res = IERC20(raisedToken).transfer(msg.sender, deposit_amount);
+        if (!res) {
+            revert TransferFailed();
+        }
+
+        /**
+         * The removeEvent function in the FTOFactory updates the storage variable
+         *  to reflect that the depositor not participated in this FTOPair.
+         */
+        IYexFTOFactoryV2(factory).removeEvent(msg.sender, address(this));
 
         emit Refund(msg.sender, deposit_amount);
     }
@@ -313,11 +331,10 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
          * 2. A launchedTokenProvider that does not use a custom hook can be a [claimer].
          * 3. If a custom hook is used but the hook does not have a burnable function, it can be a [claimer].
          */
-        if (
-            raisedTokenDeposit[claimer] == 0 &&
-            (claimer != launchedTokenProvider || hook.hasBurnable())
-        ) {
-            revert Unauthorized(claimer);
+        if (raisedTokenDeposit[claimer] == 0) {
+            if ((claimer != launchedTokenProvider || hook.hasBurnable())) {
+                revert Unauthorized(claimer);
+            }
         }
 
         _transferLP(claimer);
@@ -458,23 +475,34 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
     function _perform() internal {
         if (depositedRaisedToken != 0) {
             /**
+             * for cached
+             */
+            address dex = otherPool;
+            uint256 curLaunchTokenAmount = depositedLaunchedToken;
+            address curRaisedToken = raisedToken;
+            address curLaunchedToken = launchedToken;
+
+            /**
              * launchAmount is the actual amount of LaunchedToken to be supplied to the Dex pool.
              * It is calculated based on launchPercent.
              */
-            uint256 launchAmount = (depositedLaunchedToken * launchPercent) /
-                100;
+            uint256 launchAmount = (curLaunchTokenAmount * launchPercent) / 100;
             /**
              * poolLaunchedTokenAmount is the amount of LaunchedToken remaining after being supplied to the Dex pool.
              * The remaining tokens are provided as a reward to the depositors.
              */
-            poolLaunchedTokenAmount = depositedLaunchedToken - launchAmount;
+            poolLaunchedTokenAmount = curLaunchTokenAmount - launchAmount;
 
             // The code section for adding liquidity to HenloDex
-            IERC20(raisedToken).approve(otherPool, depositedRaisedToken);
-            IERC20(launchedToken).approve(otherPool, launchAmount);
-            (, , uint liquidity) = IHenloDexRouterV1(otherPool).addLiquidity(
-                raisedToken,
-                launchedToken,
+            TransferHelper.safeApprove(
+                curRaisedToken,
+                dex,
+                curLaunchTokenAmount
+            );
+            TransferHelper.safeApprove(curLaunchedToken, dex, launchAmount);
+            (, , uint liquidity) = IHenloDexRouterV1(dex).addLiquidity(
+                curRaisedToken,
+                curLaunchedToken,
                 depositedRaisedToken,
                 launchAmount,
                 0,
@@ -484,11 +512,8 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
             );
 
             // The code section for getting the address of the LP token received after supplying liquidity.
-            address poolFactory = IHenloDexRouterV1(otherPool).factory();
-            address pair = IHenloDexFactory(poolFactory).getPair(
-                raisedToken,
-                launchedToken
-            );
+            address pair = IHenloDexFactory(IHenloDexRouterV1(dex).factory())
+                .getPair(curRaisedToken, curLaunchedToken);
             lpToken = pair;
 
             /**
@@ -508,7 +533,7 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
                  * Approve the hook contract to transfer the calculated vestAmount.
                  */
                 uint256 vestAmount = (_totalLP * percent4hook) / 100;
-                IERC20(pair).approve(hook, vestAmount);
+                TransferHelper.safeApprove(pair, hook, vestAmount);
                 IYexFTOHook(hook).liquidityHookOp(pair, vestAmount);
             }
         } else {
@@ -576,7 +601,7 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
         }
 
         FTOState = Status.Paused;
-        emit Paused(block.timestamp);
+        emit Paused();
     }
 
     /// @dev Resumes the status of the FTO that was Paused.
@@ -591,7 +616,7 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
         }
 
         FTOState = Status.Processing;
-        emit Resumed(block.timestamp);
+        emit Resumed();
     }
 
     function withdrawFee(address feeTo) external override {}

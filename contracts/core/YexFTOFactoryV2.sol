@@ -24,10 +24,14 @@ contract YexFTOFactoryV2 is IYexFTOFactoryV2, WhiteList {
     mapping(address => mapping(address => address)) public getPair;
     mapping(address => bool) public isRaisedToken;
 
+    event EventAdded(address depositer, address ftoPair);
+    event EventRemoved(address depositer, address ftoPair);
+
     error NotParticipateInThisFTOPair();
     error NotAllowedRaisedToken();
     error IdenticalAddress(address launchedToken);
     error YexFTOPairExists(address token0, address token1);
+    error CreatePairFailed();
     error TokenAddressIsZero();
     error FeeToAddressIsZero();
     error LpTokenAddressIsZero();
@@ -36,7 +40,19 @@ contract YexFTOFactoryV2 is IYexFTOFactoryV2, WhiteList {
     /// This function is called by YexFTOPair contract after the depositor deposits RaisedToken in the FTOPair.
     /// @param depositor Address of participant in the FTO fundraising
     /// @param ftoPair Address of FTOPair
-    function addEvent(address depositor, address ftoPair) external override {
+    function addEvent(
+        address depositor,
+        address ftoPair,
+        address raisedToken,
+        address launchedToken
+    ) external override {
+        (address token0, address token1) = raisedToken < launchedToken
+            ? (raisedToken, launchedToken)
+            : (launchedToken, raisedToken);
+        if (getPair[token0][token1] != ftoPair) {
+            revert NotParticipateInThisFTOPair();
+        }
+
         if (IYexFTOPairV2(ftoPair).raisedTokenDeposit(depositor) == 0) {
             revert NotParticipateInThisFTOPair();
         }
@@ -45,6 +61,35 @@ contract YexFTOFactoryV2 is IYexFTOFactoryV2, WhiteList {
             events_map[depositor][ftoPair] = true;
             eventParticipants[depositor].push(ftoPair);
         }
+
+        emit EventAdded(depositor, ftoPair);
+    }
+
+    /// @dev If a depositor remove from the FTO fundraising, remove the FTOPair address from the eventParticipants[depositor] array.
+    /// This function is called by YexFTOPair contract after the depositor refund RaisedToken in the FTOPair.
+    /// @param depositor Address of participant in the FTO fundraising
+    /// @param ftoPair Address of FTOPair
+    function removeEvent(address depositor, address ftoPair) external override {
+        if (events_map[depositor][ftoPair] != true) {
+            revert NotParticipateInThisFTOPair();
+        }
+
+        // Remove the mapping
+        events_map[depositor][ftoPair] = false;
+        // Find and remove the ftoPair from the eventParticipants array
+        uint256 length = eventParticipants[depositor].length;
+        for (uint256 i = 0; i < length; i++) {
+            if (eventParticipants[depositor][i] == ftoPair) {
+                // Replace the found element with the last element
+                eventParticipants[depositor][i] = eventParticipants[depositor][
+                    length - 1
+                ]; // Remove the last element
+                eventParticipants[depositor].pop();
+                break;
+            }
+        }
+
+        emit EventRemoved(depositor, ftoPair);
     }
 
     /// @notice Returns the list of FTOPairs that the depositor has participated in.
@@ -58,7 +103,7 @@ contract YexFTOFactoryV2 is IYexFTOFactoryV2, WhiteList {
     /// @dev This function add a new token used for investment.
     /// Only the factory owner can call this function.
     /// @param _raisedToken Token address for investment in FTO fundraising
-    function addRaisedToken(address _raisedToken) external onlyOwner {
+    function addRaisedToken(address _raisedToken) external payable onlyOwner {
         if (!isRaisedToken[_raisedToken]) {
             raisedTokens.push(_raisedToken);
             isRaisedToken[_raisedToken] = true;
@@ -70,7 +115,9 @@ contract YexFTOFactoryV2 is IYexFTOFactoryV2, WhiteList {
     /// @dev This function remove a token used for investment.
     /// Only the factory owner can call this function.
     /// @param _raisedToken Token address for investment in FTO fundraising
-    function removeRaisedToken(address _raisedToken) external onlyOwner {
+    function removeRaisedToken(
+        address _raisedToken
+    ) external payable onlyOwner {
         if (isRaisedToken[_raisedToken]) {
             isRaisedToken[_raisedToken] = false;
             emit RaisedTokenRemoved(_raisedToken);
@@ -187,6 +234,9 @@ contract YexFTOFactoryV2 is IYexFTOFactoryV2, WhiteList {
         assembly {
             pair := create2(0, add(bytecode, 32), mload(bytecode), salt)
         }
+        if (pair == address(0)) {
+            revert CreatePairFailed();
+        }
 
         /**
          * Only FTOFactory: address(this) can mint.
@@ -229,7 +279,7 @@ contract YexFTOFactoryV2 is IYexFTOFactoryV2, WhiteList {
     function pause(
         address raisedToken,
         address launchedToken
-    ) external override onlyOwner {
+    ) external payable override onlyOwner {
         address pair = getPair[raisedToken][launchedToken];
         IYexFTOPairV2(pair).pause();
     }
@@ -240,7 +290,7 @@ contract YexFTOFactoryV2 is IYexFTOFactoryV2, WhiteList {
     function resume(
         address raisedToken,
         address launchedToken
-    ) external override onlyOwner {
+    ) external payable override onlyOwner {
         address pair = getPair[raisedToken][launchedToken];
         IYexFTOPairV2(pair).resume();
     }
@@ -260,7 +310,7 @@ contract YexFTOFactoryV2 is IYexFTOFactoryV2, WhiteList {
         address raisedToken,
         address launchedToken,
         address feeTo
-    ) external onlyOwner {
+    ) external payable onlyOwner {
         if (feeTo == address(0)) {
             revert FeeToAddressIsZero();
         }
