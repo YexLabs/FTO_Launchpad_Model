@@ -34,7 +34,7 @@ contract CustomHookTest is FTOHookTest {
         hook = new CustomHook{salt: salt}(address(yexFTOFactory));
         hookAddress = hookAddress_;
 
-        yexFTOFactory.addWhiteList(hookAddress);
+        // yexFTOFactory.addWhiteList(hookAddress);
     }
 
     function _createFTOPair() private {

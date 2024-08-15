@@ -1,15 +1,14 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.16;
 
-import "./WhiteList.sol";
 import "./YexFTOPairV2.sol";
 import "./YexFTOLaunchToken.sol";
-import "../libraries/Ownable.sol";
+import "@openzeppelin/contracts/access/Ownable2Step.sol";
 import "../interfaces/IYexFTOFactoryV2.sol";
 
 /// @title Factory that generates FTOPair
 /// @notice Creating Launch Token and FTO launchpad.
-contract YexFTOFactoryV2 is IYexFTOFactoryV2, WhiteList {
+contract YexFTOFactoryV2 is IYexFTOFactoryV2, Ownable2Step {
     address[] public allPairs;
     /// @dev List of RaisedToken addresses allowed for fundraising in the FTO Launchpad
     address[] public raisedTokens;
@@ -145,7 +144,7 @@ contract YexFTOFactoryV2 is IYexFTOFactoryV2, WhiteList {
         address poolHandler,
         uint256 raisingCycle,
         bytes calldata data
-    ) external override onlyWhiteList returns (address pair) {
+    ) external override returns (address pair) {
         /**
          * YexFTOFactory obtains the ROLE to mint LaunchedToken.
          * msg.sender(Token launcher or hook) obtains the ROLE to burn LaunchedToken in his own account.

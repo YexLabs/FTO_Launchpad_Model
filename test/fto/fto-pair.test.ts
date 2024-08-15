@@ -1,13 +1,13 @@
 import { expect } from 'chai';
+import { FTOParams, Status } from '../common/constants';
 import { deployContracts } from '../common/deployment';
 import {
-  createFTO,
-  generateSignersAndAmounts,
-  calculateLpAmount,
   calculateFeeAmount,
   calculateLaunchedTokenAmount,
+  calculateLpAmount,
+  createFTO,
+  generateSignersAndAmounts,
 } from './../common/helpers';
-import { Status, FTOParams } from '../common/constants';
 
 describe('FTO Pair test', function () {
   let usdt: Contract;
@@ -30,7 +30,7 @@ describe('FTO Pair test', function () {
     ({ usdt, yexFTOFactory, yexFTOFacade, henloDexFactory, henloDexRouter } =
       await deployContracts());
 
-    await yexFTOFactory.addWhiteList(tokenLauncher.address);
+    // await yexFTOFactory.addWhiteList(tokenLauncher.address);
     await createFTO(yexFTOFactory, tokenLauncher, {
       raisedToken: usdt.address,
       dexRouter: henloDexRouter.address,
