@@ -85,7 +85,6 @@ contract YexFTOFactoryV2 is IYexFTOFactoryV2, Ownable2Step {
     function events(
         address depositor
     ) external view override returns (address[] memory pairs) {
-        // return eventParticipants[depositor];
         return eventParticipants[depositor].values();
     }
 
