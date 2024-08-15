@@ -168,4 +168,15 @@ describe('FTO Events test', function () {
     let events = await yexFTOFactory.events(depositors[1].address);
     expect(events.length).to.equal(0);
   });
+
+  it('should revert addEvent FTOPairIsInvalid', async () => {
+    await expect(
+      yexFTOFactory.addEvent(
+        depositors[0].address,
+        yexFTOPairs[0].address,
+        usdt.address,
+        launchedTokens[2],
+      ),
+    ).to.revertedWithCustomError(yexFTOFactory, 'FTOPairIsInvalid');
+  });
 });
