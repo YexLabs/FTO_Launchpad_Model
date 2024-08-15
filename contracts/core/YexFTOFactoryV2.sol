@@ -1,14 +1,17 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.16;
 
+import "@openzeppelin/contracts/access/Ownable2Step.sol";
+import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "./YexFTOPairV2.sol";
 import "./YexFTOLaunchToken.sol";
-import "@openzeppelin/contracts/access/Ownable2Step.sol";
 import "../interfaces/IYexFTOFactoryV2.sol";
 
 /// @title Factory that generates FTOPair
 /// @notice Creating Launch Token and FTO launchpad.
 contract YexFTOFactoryV2 is IYexFTOFactoryV2, Ownable2Step {
+    using EnumerableSet for EnumerableSet.AddressSet;
+
     address[] public allPairs;
     /// @dev List of RaisedToken addresses allowed for fundraising in the FTO Launchpad
     address[] public raisedTokens;
@@ -16,8 +19,7 @@ contract YexFTOFactoryV2 is IYexFTOFactoryV2, Ownable2Step {
     bytes32 public constant INIT_CODE_PAIR_HASH =
         keccak256(abi.encodePacked(type(YexFTOPairV2).creationCode));
 
-    mapping(address => address[]) private eventParticipants;
-    mapping(address => mapping(address => bool)) private events_map;
+    mapping(address => EnumerableSet.AddressSet) private eventParticipants;
 
     /// @dev [LaunchedToken][RaisedToken] => FTOPair address
     mapping(address => mapping(address => address)) public getPair;
@@ -27,6 +29,8 @@ contract YexFTOFactoryV2 is IYexFTOFactoryV2, Ownable2Step {
     event EventRemoved(address depositer, address ftoPair);
 
     error NotParticipateInThisFTOPair();
+    error RaisedTokenStillRemaining();
+    error FTOPairIsInvalid();
     error NotAllowedRaisedToken();
     error IdenticalAddress(address launchedToken);
     error YexFTOPairExists(address token0, address token1);
@@ -49,17 +53,14 @@ contract YexFTOFactoryV2 is IYexFTOFactoryV2, Ownable2Step {
             ? (raisedToken, launchedToken)
             : (launchedToken, raisedToken);
         if (getPair[token0][token1] != ftoPair) {
-            revert NotParticipateInThisFTOPair();
+            revert FTOPairIsInvalid();
         }
 
         if (IYexFTOPairV2(ftoPair).raisedTokenDeposit(depositor) == 0) {
             revert NotParticipateInThisFTOPair();
         }
 
-        if (events_map[depositor][ftoPair] == false) {
-            events_map[depositor][ftoPair] = true;
-            eventParticipants[depositor].push(ftoPair);
-        }
+        eventParticipants[depositor].add(ftoPair);
 
         emit EventAdded(depositor, ftoPair);
     }
@@ -69,23 +70,12 @@ contract YexFTOFactoryV2 is IYexFTOFactoryV2, Ownable2Step {
     /// @param depositor Address of participant in the FTO fundraising
     /// @param ftoPair Address of FTOPair
     function removeEvent(address depositor, address ftoPair) external override {
-        if (events_map[depositor][ftoPair] != true) {
-            revert NotParticipateInThisFTOPair();
+        if (IYexFTOPairV2(ftoPair).raisedTokenDeposit(depositor) > 0) {
+            revert RaisedTokenStillRemaining();
         }
 
-        // Remove the mapping
-        events_map[depositor][ftoPair] = false;
-        // Find and remove the ftoPair from the eventParticipants array
-        uint256 length = eventParticipants[depositor].length;
-        for (uint256 i = 0; i < length; i++) {
-            if (eventParticipants[depositor][i] == ftoPair) {
-                // Replace the found element with the last element
-                eventParticipants[depositor][i] = eventParticipants[depositor][
-                    length - 1
-                ]; // Remove the last element
-                eventParticipants[depositor].pop();
-                break;
-            }
+        if (!eventParticipants[depositor].remove(ftoPair)) {
+            revert NotParticipateInThisFTOPair();
         }
 
         emit EventRemoved(depositor, ftoPair);
@@ -95,7 +85,8 @@ contract YexFTOFactoryV2 is IYexFTOFactoryV2, Ownable2Step {
     function events(
         address depositor
     ) external view override returns (address[] memory pairs) {
-        return eventParticipants[depositor];
+        // return eventParticipants[depositor];
+        return eventParticipants[depositor].values();
     }
 
     /// @notice Add raisedToken
