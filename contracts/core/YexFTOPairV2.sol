@@ -287,10 +287,7 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
         raisedTokenDeposit[msg.sender] = 0;
         depositedRaisedToken -= deposit_amount;
 
-        bool res = IERC20(raisedToken).transfer(msg.sender, deposit_amount);
-        if (!res) {
-            revert TransferFailed();
-        }
+        TransferHelper.safeTransfer(raisedToken, msg.sender, deposit_amount);
 
         /**
          * The removeEvent function in the FTOFactory updates the storage variable

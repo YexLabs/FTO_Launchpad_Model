@@ -14,8 +14,12 @@ contract YexFTOFacadeV2 is IYexFTOFacadeV2, Ownable {
     address public immutable override factory;
 
     error InvalidRaisedTokenAmount();
+    error FactoryError();
 
     constructor(address _factory) {
+        if (_factory == address(0)) {
+            revert FactoryError();
+        }
         factory = _factory;
     }
 
