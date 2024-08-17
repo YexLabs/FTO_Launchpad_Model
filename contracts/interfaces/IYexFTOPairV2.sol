@@ -19,8 +19,8 @@ interface IYexFTOPairV2 is AutomationCompatibleInterface {
     event DepositRaisedToken(address indexed depositer, uint);
     event ClaimLP(address indexed claimer, uint);
     event Refund(address indexed depositer, uint);
-    event Paused(uint timestamp);
-    event Resumed(uint timestamp);
+    event Paused();
+    event Resumed();
     event ClaimLaunchedToken(address claimer, uint256 amount);
     event Perform(uint status);
 

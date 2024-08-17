@@ -58,7 +58,10 @@ contract HPOT is
     /// @notice Allows the owner to mint new tokens
     /// @dev    Only allows minting below an inflation cap.
     ///         Set to once per year, and a maximum of 2%.
-    function mint(address recipient, uint256 amount) external onlyOwner {
+    function mint(
+        address recipient,
+        uint256 amount
+    ) external payable onlyOwner {
         // function inspired by: https://github.com/ensdomains/governance/blob/548f3f3607c83717427d9ae3fc1f3a9e66fc7642/contracts/ENSToken.sol#L105
         require(
             amount <=

@@ -1,8 +1,8 @@
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { expect } from 'chai';
 import { Contract } from 'ethers';
-import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
-import { deployContracts, deployERC20Token } from '../common/deployment';
 import { Status } from '../common/constants';
+import { deployContracts, deployERC20Token } from '../common/deployment';
 import { createFTO } from './../common/helpers';
 
 describe('FTO Factory test', function () {
@@ -88,15 +88,6 @@ describe('FTO Factory test', function () {
   describe('FTO Factory: Create FTO Test', function () {
     before('Add usdt as a raised token.', async () => {
       await yexFTOFactory.addRaisedToken(usdt.address);
-      await yexFTOFactory.batchAddWhiteList([tokenLauncher.address]);
-    });
-    it('should revert if a non-whitelisted address tries to create a new FTO pair', async function () {
-      await expect(
-        createFTO(yexFTOFactory, Alice, {
-          raisedToken: usdt.address,
-          dexRouter: henloDexRouter.address,
-        }),
-      ).to.revertedWith('WhiteList: only whiteList can create');
     });
     it('should revert if the raised token is not allowed', async function () {
       const mockToken = await deployERC20Token('mock', 'mock');

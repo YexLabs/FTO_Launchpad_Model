@@ -25,13 +25,16 @@ contract YexFTOLaunchToken is ERC20, AccessControl {
     }
 
     /// @dev This function is called only once by the FTOFactory.
-    function mint(address to, uint256 amount) public onlyRole(MINTER_ROLE) {
+    function mint(
+        address to,
+        uint256 amount
+    ) public payable onlyRole(MINTER_ROLE) {
         _mint(to, amount);
     }
 
     /// @dev This function can only be called by the token launcher or hook.
     /// The token launcher or hook can only burn their own balance.
-    function burn(uint256 amount) public onlyRole(BURNER_ROLE) {
+    function burn(uint256 amount) public payable onlyRole(BURNER_ROLE) {
         _burn(_msgSender(), amount);
     }
 }

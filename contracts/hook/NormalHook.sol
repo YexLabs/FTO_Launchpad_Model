@@ -10,11 +10,15 @@ import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 /// @dev Custom hook contract developers are also encouraged to inherit from this contract when developing hooks.
 abstract contract NormalHook is ERC165, IYexFTOHook {
     error NotImplemented();
+    error FactoryError();
 
     /// @notice The address of the YexFTOFactory
     address public immutable ftoFactory;
 
     constructor(address _ftoFactory) {
+        if (_ftoFactory == address(0)) {
+            revert FactoryError();
+        }
         ftoFactory = _ftoFactory;
 
         /**

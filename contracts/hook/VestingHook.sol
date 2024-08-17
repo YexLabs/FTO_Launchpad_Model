@@ -164,13 +164,12 @@ abstract contract VestingHook is NormalHook, Lock {
      */
     function release(address ftoPair) public virtual {
         uint256 amount = releasable(ftoPair);
-        _erc20Released[getPair[ftoPair].lpToken] += amount;
-        emit ERC20Released(getPair[ftoPair].lpToken, amount);
-        TransferHelper.safeTransfer(
-            getPair[ftoPair].lpToken,
-            beneficiary(ftoPair),
-            amount
-        );
+
+        address lpToken = getPair[ftoPair].lpToken;
+
+        _erc20Released[lpToken] += amount;
+        emit ERC20Released(lpToken, amount);
+        TransferHelper.safeTransfer(lpToken, beneficiary(ftoPair), amount);
     }
 
     /**

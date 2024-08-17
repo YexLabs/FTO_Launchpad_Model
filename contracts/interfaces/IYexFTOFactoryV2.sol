@@ -28,9 +28,12 @@ interface IYexFTOFactoryV2 {
 
     function isRaisedToken(address) external view returns (bool);
 
-    function pause(address raisedToken, address launchedToken) external;
+    function pause(address raisedToken, address launchedToken) external payable;
 
-    function resume(address raisedToken, address launchedToken) external;
+    function resume(
+        address raisedToken,
+        address launchedToken
+    ) external payable;
 
     function createFTO(
         address raisedToken,
@@ -43,7 +46,14 @@ interface IYexFTOFactoryV2 {
         bytes calldata data
     ) external returns (address pair);
 
-    function addEvent(address depositer, address ftoPair) external;
+    function addEvent(
+        address depositer,
+        address ftoPair,
+        address raisedToken,
+        address launchedToken
+    ) external;
+
+    function removeEvent(address depositer, address ftoPair) external;
 
     function events(
         address depositer
@@ -53,5 +63,5 @@ interface IYexFTOFactoryV2 {
         address raisedToken,
         address launchedToken,
         address feeTo
-    ) external;
+    ) external payable;
 }
