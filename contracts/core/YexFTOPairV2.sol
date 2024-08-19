@@ -57,6 +57,10 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
     /// @dev The address of YexFTOFactory contract
     address public immutable factory;
 
+    /// @dev The time when the fundraising for the FTO begins
+    /// Fundraising begins immediately upon the creation of the FTOPair contract.
+    uint256 public startTime = block.timestamp;
+
     /// @dev The time when the fundraising for the FTO ends
     /// It is set in the initialize function.
     uint256 public endTime;
