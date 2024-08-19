@@ -47,13 +47,16 @@ interface IYexFTOFactoryV2 {
     ) external returns (address pair);
 
     function addEvent(
-        address depositer,
-        address ftoPair,
+        address depositor,
         address raisedToken,
         address launchedToken
     ) external;
 
-    function removeEvent(address depositer, address ftoPair) external;
+    function removeEvent(
+        address depositor,
+        address raisedToken,
+        address launchedToken
+    ) external;
 
     function events(
         address depositer

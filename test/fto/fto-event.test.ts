@@ -120,8 +120,12 @@ describe('FTO Events test', function () {
 
   it('should revert direct call of removeEvent', async () => {
     await expect(
-      yexFTOFactory.removeEvent(depositors[1].address, yexFTOPairs[1].address),
-    ).to.revertedWithCustomError(yexFTOFactory, 'RaisedTokenStillRemaining');
+      yexFTOFactory.removeEvent(
+        depositors[1].address,
+        usdt.address,
+        launchedTokens[1],
+      ),
+    ).to.revertedWithCustomError(yexFTOFactory, 'FTOPairIsInvalid');
   });
 
   it('should refund Raised Token for depositor0', async () => {
@@ -141,14 +145,6 @@ describe('FTO Events test', function () {
     await expect(
       yexFTOPairs[2].connect(depositors[0]).refundRaisedToken(),
     ).to.revertedWithCustomError(yexFTOPairs[2], 'InvalidAmount');
-
-    await expect(
-      yexFTOFactory.removeEvent(depositors[0].address, yexFTOPairs[2].address),
-    ).to.revertedWithCustomError(yexFTOFactory, 'NotParticipateInThisFTOPair');
-
-    await expect(
-      yexFTOFactory.removeEvent(depositors[0].address, yexFTOPairs[0].address),
-    ).to.revertedWithCustomError(yexFTOFactory, 'RaisedTokenStillRemaining');
   });
 
   it('should refund Raised Token for depositor1', async () => {
@@ -173,7 +169,6 @@ describe('FTO Events test', function () {
     await expect(
       yexFTOFactory.addEvent(
         depositors[0].address,
-        yexFTOPairs[0].address,
         usdt.address,
         launchedTokens[2],
       ),

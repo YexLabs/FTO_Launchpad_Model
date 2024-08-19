@@ -246,31 +246,32 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
             revert NotDepositedRaisedToken();
         }
 
-        /**
-         * If the depositor is depositing RaisedToken for the first time,
-         * add it to the depositor list of the FTOPair.
-         */
-        if (raisedTokenDeposit[depositor] == 0) {
-            raisedTokenDepositAddress.push(depositor);
-        }
+        uint256 curDepositorRaisedToken = raisedTokenDeposit[depositor];
 
         /**
          * Update the depositor's RaisedToken deposit amount
          *  and the total amount of RaisedToken deposited in the FTOPair.
          */
-        raisedTokenDeposit[depositor] = raisedTokenDeposit[depositor] + amount;
+        raisedTokenDeposit[depositor] = curDepositorRaisedToken + amount;
         depositedRaisedToken = depositedRaisedToken + amount;
 
         /**
-         * The addEvent function in the FTOFactory updates the storage variable
-         *  to reflect that the depositor has participated in this FTOPair.
+         * If the depositor is depositing RaisedToken for the first time,
+         * add it to the depositor list of the FTOPair.
          */
-        IYexFTOFactoryV2(factory).addEvent(
-            depositor,
-            address(this),
-            address(raisedToken),
-            address(launchedToken)
-        );
+        if (curDepositorRaisedToken == 0) {
+            raisedTokenDepositAddress.push(depositor);
+
+            /**
+             * The addEvent function in the FTOFactory updates the storage variable
+             *  to reflect that the depositor has participated in this FTOPair.
+             */
+            IYexFTOFactoryV2(factory).addEvent(
+                depositor,
+                raisedToken,
+                launchedToken
+            );
+        }
 
         emit DepositRaisedToken(depositor, amount);
     }
@@ -294,7 +295,11 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
          * The removeEvent function in the FTOFactory updates the storage variable
          *  to reflect that the depositor not participated in this FTOPair.
          */
-        IYexFTOFactoryV2(factory).removeEvent(msg.sender, address(this));
+        IYexFTOFactoryV2(factory).removeEvent(
+            msg.sender,
+            raisedToken,
+            launchedToken
+        );
 
         emit Refund(msg.sender, deposit_amount);
     }
