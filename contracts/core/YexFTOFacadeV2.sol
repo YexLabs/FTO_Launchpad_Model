@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.16;
 
-import "@openzeppelin/contracts/access/Ownable2Step.sol";
 import "../interfaces/IYexFTOFacadeV2.sol";
 import "../interfaces/IYexFTOPairV2.sol";
 import "../libraries/YexFTOLibrary.sol";
@@ -10,7 +9,7 @@ import "@openzeppelin/contracts-upgradeable/utils/cryptography/MerkleProofUpgrad
 
 /// @title YexFTOFacade
 /// @notice The contract that directly interacts with the users.
-contract YexFTOFacadeV2 is IYexFTOFacadeV2, Ownable2Step {
+contract YexFTOFacadeV2 is IYexFTOFacadeV2 {
     address public immutable override factory;
 
     error InvalidRaisedTokenAmount();
