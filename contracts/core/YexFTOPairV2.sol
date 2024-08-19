@@ -57,9 +57,6 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
     /// @dev The address of YexFTOFactory contract
     address public immutable factory;
 
-    /// @dev The time when the fundraising for the FTO begins
-    /// Fundraising begins immediately upon the creation of the FTOPair contract.
-    uint256 public startTime = block.timestamp;
     /// @dev The time when the fundraising for the FTO ends
     /// It is set in the initialize function.
     uint256 public endTime;
@@ -476,6 +473,7 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
              */
             address dex = otherPool;
             uint256 curLaunchTokenAmount = depositedLaunchedToken;
+            uint256 curRaisedTokenAmount = depositedRaisedToken;
             address curRaisedToken = raisedToken;
             address curLaunchedToken = launchedToken;
 
@@ -494,13 +492,13 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
             TransferHelper.safeApprove(
                 curRaisedToken,
                 dex,
-                curLaunchTokenAmount
+                curRaisedTokenAmount
             );
             TransferHelper.safeApprove(curLaunchedToken, dex, launchAmount);
             (, , uint liquidity) = IHenloDexRouterV1(dex).addLiquidity(
                 curRaisedToken,
                 curLaunchedToken,
-                depositedRaisedToken,
+                curRaisedTokenAmount,
                 launchAmount,
                 0,
                 0,

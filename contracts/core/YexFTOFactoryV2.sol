@@ -49,10 +49,7 @@ contract YexFTOFactoryV2 is IYexFTOFactoryV2, Ownable2Step {
         address raisedToken,
         address launchedToken
     ) external override {
-        (address token0, address token1) = raisedToken < launchedToken
-            ? (raisedToken, launchedToken)
-            : (launchedToken, raisedToken);
-        if (getPair[token0][token1] != ftoPair) {
+        if (getPair[raisedToken][launchedToken] != ftoPair) {
             revert FTOPairIsInvalid();
         }
 
