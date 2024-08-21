@@ -60,6 +60,7 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
     /// @dev The time when the fundraising for the FTO begins
     /// Fundraising begins immediately upon the creation of the FTOPair contract.
     uint256 public startTime = block.timestamp;
+
     /// @dev The time when the fundraising for the FTO ends
     /// It is set in the initialize function.
     uint256 public endTime;
@@ -84,9 +85,6 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
     mapping(address => uint256) public claimedLp;
     /// @dev Indicates whether each depositor has claimed the LaunchedToken allocated as a reward
     mapping(address => bool) public claimedLaunchedToken;
-
-    /// @dev List of depositors
-    address[] public raisedTokenDepositAddress;
 
     /// @dev The percentage of LP tokens that are vested in hook contract if the FTO uses a vesting hook.
     /// It is set in the initialize function, and the decimal is 0.
@@ -245,31 +243,30 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
             revert NotDepositedRaisedToken();
         }
 
-        /**
-         * If the depositor is depositing RaisedToken for the first time,
-         * add it to the depositor list of the FTOPair.
-         */
-        if (raisedTokenDeposit[depositor] == 0) {
-            raisedTokenDepositAddress.push(depositor);
-        }
+        uint256 curDepositorRaisedToken = raisedTokenDeposit[depositor];
 
         /**
          * Update the depositor's RaisedToken deposit amount
          *  and the total amount of RaisedToken deposited in the FTOPair.
          */
-        raisedTokenDeposit[depositor] = raisedTokenDeposit[depositor] + amount;
+        raisedTokenDeposit[depositor] = curDepositorRaisedToken + amount;
         depositedRaisedToken = depositedRaisedToken + amount;
 
         /**
-         * The addEvent function in the FTOFactory updates the storage variable
-         *  to reflect that the depositor has participated in this FTOPair.
+         * If the depositor is depositing RaisedToken for the first time,
+         * call addEvent function of Factory
          */
-        IYexFTOFactoryV2(factory).addEvent(
-            depositor,
-            address(this),
-            address(raisedToken),
-            address(launchedToken)
-        );
+        if (curDepositorRaisedToken == 0) {
+            /**
+             * The addEvent function in the FTOFactory updates the storage variable
+             *  to reflect that the depositor has participated in this FTOPair.
+             */
+            IYexFTOFactoryV2(factory).addEvent(
+                depositor,
+                raisedToken,
+                launchedToken
+            );
+        }
 
         emit DepositRaisedToken(depositor, amount);
     }
@@ -293,7 +290,11 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
          * The removeEvent function in the FTOFactory updates the storage variable
          *  to reflect that the depositor not participated in this FTOPair.
          */
-        IYexFTOFactoryV2(factory).removeEvent(msg.sender, address(this));
+        IYexFTOFactoryV2(factory).removeEvent(
+            msg.sender,
+            raisedToken,
+            launchedToken
+        );
 
         emit Refund(msg.sender, deposit_amount);
     }
@@ -476,6 +477,7 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
              */
             address dex = otherPool;
             uint256 curLaunchTokenAmount = depositedLaunchedToken;
+            uint256 curRaisedTokenAmount = depositedRaisedToken;
             address curRaisedToken = raisedToken;
             address curLaunchedToken = launchedToken;
 
@@ -494,13 +496,13 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
             TransferHelper.safeApprove(
                 curRaisedToken,
                 dex,
-                curLaunchTokenAmount
+                curRaisedTokenAmount
             );
             TransferHelper.safeApprove(curLaunchedToken, dex, launchAmount);
             (, , uint liquidity) = IHenloDexRouterV1(dex).addLiquidity(
                 curRaisedToken,
                 curLaunchedToken,
-                depositedRaisedToken,
+                curRaisedTokenAmount,
                 launchAmount,
                 0,
                 0,

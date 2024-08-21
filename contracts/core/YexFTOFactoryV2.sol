@@ -42,43 +42,39 @@ contract YexFTOFactoryV2 is IYexFTOFactoryV2, Ownable2Step {
     /// @dev If a depositor participates in the FTO fundraising, add the FTOPair address to the eventParticipants[depositor] array.
     /// This function is called by YexFTOPair contract after the depositor deposits RaisedToken in the FTOPair.
     /// @param depositor Address of participant in the FTO fundraising
-    /// @param ftoPair Address of FTOPair
+    /// @param raisedToken Address of Raised Token
+    /// @param launchedToken Address of Launched Token
     function addEvent(
         address depositor,
-        address ftoPair,
         address raisedToken,
         address launchedToken
     ) external override {
-        (address token0, address token1) = raisedToken < launchedToken
-            ? (raisedToken, launchedToken)
-            : (launchedToken, raisedToken);
-        if (getPair[token0][token1] != ftoPair) {
+        if (getPair[raisedToken][launchedToken] != msg.sender) {
             revert FTOPairIsInvalid();
         }
 
-        if (IYexFTOPairV2(ftoPair).raisedTokenDeposit(depositor) == 0) {
-            revert NotParticipateInThisFTOPair();
-        }
+        eventParticipants[depositor].add(msg.sender);
 
-        eventParticipants[depositor].add(ftoPair);
-
-        emit EventAdded(depositor, ftoPair);
+        emit EventAdded(depositor, msg.sender);
     }
 
     /// @dev If a depositor remove from the FTO fundraising, remove the FTOPair address from the eventParticipants[depositor] array.
     /// This function is called by YexFTOPair contract after the depositor refund RaisedToken in the FTOPair.
     /// @param depositor Address of participant in the FTO fundraising
-    /// @param ftoPair Address of FTOPair
-    function removeEvent(address depositor, address ftoPair) external override {
-        if (IYexFTOPairV2(ftoPair).raisedTokenDeposit(depositor) > 0) {
-            revert RaisedTokenStillRemaining();
+    /// @param raisedToken Address of Raised Token
+    /// @param launchedToken Address of Launched Token
+    function removeEvent(
+        address depositor,
+        address raisedToken,
+        address launchedToken
+    ) external override {
+        if (getPair[raisedToken][launchedToken] != msg.sender) {
+            revert FTOPairIsInvalid();
         }
 
-        if (!eventParticipants[depositor].remove(ftoPair)) {
-            revert NotParticipateInThisFTOPair();
-        }
+        eventParticipants[depositor].remove(msg.sender);
 
-        emit EventRemoved(depositor, ftoPair);
+        emit EventRemoved(depositor, msg.sender);
     }
 
     /// @notice Returns the list of FTOPairs that the depositor has participated in.
