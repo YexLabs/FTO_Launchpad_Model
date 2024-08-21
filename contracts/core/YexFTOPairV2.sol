@@ -86,9 +86,6 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
     /// @dev Indicates whether each depositor has claimed the LaunchedToken allocated as a reward
     mapping(address => bool) public claimedLaunchedToken;
 
-    /// @dev List of depositors
-    address[] public raisedTokenDepositAddress;
-
     /// @dev The percentage of LP tokens that are vested in hook contract if the FTO uses a vesting hook.
     /// It is set in the initialize function, and the decimal is 0.
     uint256 public percent4hook;
@@ -257,11 +254,9 @@ contract YexFTOPairV2 is IYexFTOPairV2 {
 
         /**
          * If the depositor is depositing RaisedToken for the first time,
-         * add it to the depositor list of the FTOPair.
+         * call addEvent function of Factory
          */
         if (curDepositorRaisedToken == 0) {
-            raisedTokenDepositAddress.push(depositor);
-
             /**
              * The addEvent function in the FTOFactory updates the storage variable
              *  to reflect that the depositor has participated in this FTOPair.
