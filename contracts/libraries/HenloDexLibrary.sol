@@ -2,11 +2,11 @@
 
 pragma solidity =0.8.16;
 
-import "../interfaces/IUniswapV2Pair.sol";
+import "../interfaces/IHenloDexPair.sol";
 
 import "./SafeMathUniswap.sol";
 
-library UniswapV2Library {
+library HenloDexLibrary {
     using SafeMathUniswap for uint;
 
     // returns sorted token addresses, used to handle return values from pairs sorted in this order
@@ -14,11 +14,11 @@ library UniswapV2Library {
         address tokenA,
         address tokenB
     ) internal pure returns (address token0, address token1) {
-        require(tokenA != tokenB, "UniswapV2Library: IDENTICAL_ADDRESSES");
+        require(tokenA != tokenB, "HenloDexLibrary: IDENTICAL_ADDRESSES");
         (token0, token1) = tokenA < tokenB
             ? (tokenA, tokenB)
             : (tokenB, tokenA);
-        require(token0 != address(0), "UniswapV2Library: ZERO_ADDRESS");
+        require(token0 != address(0), "HenloDexLibrary: ZERO_ADDRESS");
     }
 
     // calculates the CREATE2 address for a pair without making any external calls
@@ -36,7 +36,7 @@ library UniswapV2Library {
                             hex"ff",
                             factory,
                             keccak256(abi.encodePacked(token0, token1)),
-                            hex"b88846c113feb7c60457f734d74299c3dbb10ae7aa05439cb58798fc2b414047" // init code hash
+                            hex"83620c1dfbdbbe51ec2062477d020618ef2d2ed9d39f381cdbcb28cbd212f5cf" // init code hash
                         )
                     )
                 )
@@ -51,7 +51,7 @@ library UniswapV2Library {
         address tokenB
     ) internal view returns (uint reserveA, uint reserveB) {
         (address token0, ) = sortTokens(tokenA, tokenB);
-        (uint reserve0, uint reserve1, ) = IUniswapV2Pair(
+        (uint reserve0, uint reserve1, ) = IHenloDexPair(
             pairFor(factory, tokenA, tokenB)
         ).getReserves();
         (reserveA, reserveB) = tokenA == token0
@@ -65,10 +65,10 @@ library UniswapV2Library {
         uint reserveA,
         uint reserveB
     ) internal pure returns (uint amountB) {
-        require(amountA > 0, "UniswapV2Library: INSUFFICIENT_AMOUNT");
+        require(amountA > 0, "HenloDexLibrary: INSUFFICIENT_AMOUNT");
         require(
             reserveA > 0 && reserveB > 0,
-            "UniswapV2Library: INSUFFICIENT_LIQUIDITY"
+            "HenloDexLibrary: INSUFFICIENT_LIQUIDITY"
         );
         amountB = amountA.mul(reserveB) / reserveA;
     }
@@ -79,10 +79,10 @@ library UniswapV2Library {
         uint reserveIn,
         uint reserveOut
     ) internal pure returns (uint amountOut) {
-        require(amountIn > 0, "UniswapV2Library: INSUFFICIENT_INPUT_AMOUNT");
+        require(amountIn > 0, "HenloDexLibrary: INSUFFICIENT_INPUT_AMOUNT");
         require(
             reserveIn > 0 && reserveOut > 0,
-            "UniswapV2Library: INSUFFICIENT_LIQUIDITY"
+            "HenloDexLibrary: INSUFFICIENT_LIQUIDITY"
         );
         uint amountInWithFee = amountIn.mul(997);
         uint numerator = amountInWithFee.mul(reserveOut);
@@ -96,10 +96,10 @@ library UniswapV2Library {
         uint reserveIn,
         uint reserveOut
     ) internal pure returns (uint amountIn) {
-        require(amountOut > 0, "UniswapV2Library: INSUFFICIENT_OUTPUT_AMOUNT");
+        require(amountOut > 0, "HenloDexLibrary: INSUFFICIENT_OUTPUT_AMOUNT");
         require(
             reserveIn > 0 && reserveOut > 0,
-            "UniswapV2Library: INSUFFICIENT_LIQUIDITY"
+            "HenloDexLibrary: INSUFFICIENT_LIQUIDITY"
         );
         uint numerator = reserveIn.mul(amountOut).mul(1000);
         uint denominator = reserveOut.sub(amountOut).mul(997);
@@ -112,7 +112,7 @@ library UniswapV2Library {
         uint amountIn,
         address[] memory path
     ) internal view returns (uint[] memory amounts) {
-        require(path.length >= 2, "UniswapV2Library: INVALID_PATH");
+        require(path.length >= 2, "HenloDexLibrary: INVALID_PATH");
         amounts = new uint[](path.length);
         amounts[0] = amountIn;
         for (uint i; i < path.length - 1; i++) {
@@ -131,7 +131,7 @@ library UniswapV2Library {
         uint amountOut,
         address[] memory path
     ) internal view returns (uint[] memory amounts) {
-        require(path.length >= 2, "UniswapV2Library: INVALID_PATH");
+        require(path.length >= 2, "HenloDexLibrary: INVALID_PATH");
         amounts = new uint[](path.length);
         amounts[amounts.length - 1] = amountOut;
         for (uint i = path.length - 1; i > 0; i--) {

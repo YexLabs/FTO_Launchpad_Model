@@ -13,7 +13,7 @@ async function main() {
 }
 
 async function scanUpKeep() {
-  const factory = "0x679580fdf6886a838E0f6b2a1faF38D33145eC35";
+  const factory = "0xEd6a0A29A962B4296bCeEC4e1E55F5Ec0474EAC7";
 
   const FTOFactory = await ethers.getContractFactory("YexFTOFactory");
   const FTOPair = await ethers.getContractFactory("YexFTOPair");
@@ -23,17 +23,22 @@ async function scanUpKeep() {
   console.log(len);
   for (let i = 0; i < len; i++) {
     const pair: string = await ftoFactoryContract.allPairs(i);
-    console.log(pair);
+    console.log(i, pair);
     const pairContract = FTOPair.attach(pair);
     const ftoState = await pairContract.FTOState();
     console.log(ftoState);
     // console.log(await pairContract.participations());
-    if (ftoState == 2) {
+    if (ftoState == 3) {
       const { upkeepNeeded } = await pairContract.checkUpkeep("0x");
       console.log(upkeepNeeded);
       if (upkeepNeeded) {
         console.log("perform");
-        await pairContract.performUpkeep("0x");
+        try {
+          const tx = await pairContract.performUpkeep("0x");
+          console.log(tx.hash);
+        } catch (e) {
+          continue;
+        }
       }
     }
   }

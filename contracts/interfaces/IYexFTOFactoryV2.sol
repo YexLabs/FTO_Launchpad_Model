@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.16;
 
-interface IYexFTOFactory {
+interface IYexFTOFactoryV2 {
     event PairCreated(
         address indexed token0,
         address indexed token1,
@@ -31,13 +31,14 @@ interface IYexFTOFactory {
     function resume(address raisedToken, address launchedToken) external;
 
     function createFTO(
-        address provider,
         address raisedToken,
         string calldata name,
         string calldata symbol,
         uint256 amount,
+        uint256 launchedTokenPercent,
         address poolHandler,
-        uint256 rasingCycle
+        uint256 rasingCycle,
+        bytes calldata data
     ) external returns (address pair);
 
     function addEvent(address depositer, address ftoPair) external;

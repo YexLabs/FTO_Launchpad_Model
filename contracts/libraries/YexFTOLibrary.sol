@@ -2,7 +2,7 @@
 
 pragma solidity =0.8.16;
 
-import "../interfaces/IUniswapV2Pair.sol";
+import "../interfaces/IHenloDexPair.sol";
 
 import "./SafeMathUniswap.sol";
 
@@ -14,7 +14,10 @@ library YexFTOLibrary {
         address raisedToken,
         address launchedToken
     ) internal pure returns (address token0, address token1) {
-        require(raisedToken != launchedToken, "YexFTOLibrary: IDENTICAL_ADDRESSES");
+        require(
+            raisedToken != launchedToken,
+            "YexFTOLibrary: IDENTICAL_ADDRESSES"
+        );
         (token0, token1) = raisedToken < launchedToken
             ? (raisedToken, launchedToken)
             : (launchedToken, raisedToken);
@@ -27,7 +30,10 @@ library YexFTOLibrary {
         address raisedToken,
         address launchedToken
     ) internal pure returns (address pair) {
-        (address token0, address token1) = sortTokens(raisedToken, launchedToken);
+        (address token0, address token1) = sortTokens(
+            raisedToken,
+            launchedToken
+        );
         pair = address(
             uint160(
                 uint(
@@ -36,7 +42,7 @@ library YexFTOLibrary {
                             hex"ff",
                             factory,
                             keccak256(abi.encodePacked(token0, token1)),
-                            hex"7f663b417b1c9838cef8562bae9f209f8312315b342d9aa70fa8554caf026de3" // init code hash
+                            hex"7afb47552aff4b8b4f811c5b66cb637863b98f04ac8c664403c7a9d81411cd3a" // init code hash
                         )
                     )
                 )

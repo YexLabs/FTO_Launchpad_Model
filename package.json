@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "**honeypotfinance** is a DEX project built on honeyswap v3",
   "scripts": {
-    "test": " mocha",
+    "test": "mocha",
     "compile": "npm run clean && waffle waffle.json",
     "clean": "rimraf ./build/",
     "deploy": "npm run compile && ts-node --script-mode scripts/deploy-factory.ts"

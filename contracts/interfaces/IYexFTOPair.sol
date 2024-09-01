@@ -9,12 +9,14 @@ interface IYexFTOPair is AutomationCompatibleInterface {
         Paused,
         Processing
     }
-    event Deposit(address indexed depositer, uint);
+    event DepositLaunchedToken(address indexed depositer, uint);
+    event DepositRaisedToken(address indexed depositer, uint);
     event Withdraw(address indexed withdrawer, uint);
     event ClaimLP(address indexed claimer, uint);
     event Refund(address indexed depositer, uint);
     event Paused(uint timestamp);
     event Resumed(uint timestamp);
+    event ClaimLaunchedToken(address claimer, uint256 amount);
 
     function depositRaisedToken(address depositer, uint256 amount) external;
 
@@ -38,4 +40,9 @@ interface IYexFTOPair is AutomationCompatibleInterface {
 
     function FTOState() external view returns (Status);
 
+    function withdrawFee(address feeTo) external;
+
+    function raisedToken() external view returns (address);
+
+    function launchedToken() external view returns (address);
 }
