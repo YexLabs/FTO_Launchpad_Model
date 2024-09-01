@@ -143,5 +143,4 @@ library HenloDexLibrary {
             amounts[i - 1] = getAmountIn(amounts[i], reserveIn, reserveOut);
         }
     }
-
 }

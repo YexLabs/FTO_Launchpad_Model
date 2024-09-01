@@ -127,7 +127,7 @@ contract HenloDexRouterV2 is IHenloDexRouterV1 {
         // can calculate how many LP tokens will be minted even not balanced.
         TransferHelper.safeTransferFrom(tokenA, msg.sender, pair, amountA);
         TransferHelper.safeTransferFrom(tokenB, msg.sender, pair, amountB);
-        liquidity = IUniswapV2Pair(pair).mint(to);
+        liquidity = IUniswapV2Pair(pair).unbalance_mint(to);
         require(liquidity >= amountLPmin, 'UniswapV2Router: INSUFFICIENT_LP_AMOUNT');
     }
 

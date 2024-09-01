@@ -85,6 +85,8 @@ interface IHenloDexPair {
 
     function mint(address to) external returns (uint liquidity);
 
+    function unbalance_mint(address to) external returns (uint liquidity);
+
     function burn(address to) external returns (uint amount0, uint amount1);
 
     function swap(
