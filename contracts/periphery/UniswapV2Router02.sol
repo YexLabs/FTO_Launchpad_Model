@@ -47,9 +47,6 @@ contract UniswapV2Router02 is IUniswapV2Router02 {
         (uint reserveA, uint reserveB) = UniswapV2Library.getReserves(factory, tokenA, tokenB);
         if (reserveA == 0 && reserveB == 0) {
             (amountA, amountB) = (amountADesired, amountBDesired);
-        } else if (amountADesired == 0 || amountBDesired == 0 ) {
-            // single side liquidity
-            (amountA, amountB) = (amountADesired, amountBDesired);
         } else {
             uint amountBOptimal = UniswapV2Library.quote(amountADesired, reserveA, reserveB);
             if (amountBOptimal <= amountBDesired) {
@@ -63,6 +60,23 @@ contract UniswapV2Router02 is IUniswapV2Router02 {
             }
         }
     }
+    
+    function addLiquidity(
+        address tokenA,
+        address tokenB,
+        uint amountA,
+        uint amountB,
+        unit amountLPmin,
+        address to,
+        uint deadline
+    ) external virtual override ensure(deadline) returns (uint amountA, uint amountB, uint liquidity) {
+        address pair = UniswapV2Library.pairFor(factory, tokenA, tokenB);
+        TransferHelper.safeTransferFrom(tokenA, msg.sender, pair, amountA);
+        TransferHelper.safeTransferFrom(tokenB, msg.sender, pair, amountB);
+        liquidity = IUniswapV2Pair(pair).mint(to);
+        require(liquidity >= amountLPmin, 'UniswapV2Router: INSUFFICIENT_LP_AMOUNT');
+    }
+
     function addLiquidity(
         address tokenA,
         address tokenB,
@@ -79,6 +93,7 @@ contract UniswapV2Router02 is IUniswapV2Router02 {
         TransferHelper.safeTransferFrom(tokenB, msg.sender, pair, amountB);
         liquidity = IUniswapV2Pair(pair).mint(to);
     }
+
     function addLiquidityETH(
         address token,
         uint amountTokenDesired,
