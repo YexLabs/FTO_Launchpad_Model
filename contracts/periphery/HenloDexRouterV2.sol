@@ -120,10 +120,32 @@ contract HenloDexRouterV2 is IHenloDexRouterV1 {
         uint deadline
     ) external virtual override ensure(deadline) returns (uint amountA, uint amountB, uint liquidity) {
         address pair = UniswapV2Library.pairFor(factory, tokenA, tokenB);
+        // create the pair if it doesn't exist yet
+        if (IHenloDexFactory(factory).getPair(tokenA, tokenB) == address(0)) {
+            IHenloDexFactory(factory).createPair(tokenA, tokenB);
+        }
+        // can calculate how many LP tokens will be minted even not balanced.
         TransferHelper.safeTransferFrom(tokenA, msg.sender, pair, amountA);
         TransferHelper.safeTransferFrom(tokenB, msg.sender, pair, amountB);
         liquidity = IUniswapV2Pair(pair).mint(to);
         require(liquidity >= amountLPmin, 'UniswapV2Router: INSUFFICIENT_LP_AMOUNT');
+    }
+    
+    function addLiquidity(
+        address tokenA,
+        address tokenB,
+        uint amountADesired,
+        uint amountBDesired,
+        uint amountAMin,
+        uint amountBMin,
+        address to,
+        uint deadline
+    ) external virtual override ensure(deadline) returns (uint amountA, uint amountB, uint liquidity) {
+        (amountA, amountB) = _addLiquidity(tokenA, tokenB, amountADesired, amountBDesired, amountAMin, amountBMin);
+        address pair = UniswapV2Library.pairFor(factory, tokenA, tokenB);
+        TransferHelper.safeTransferFrom(tokenA, msg.sender, pair, amountA);
+        TransferHelper.safeTransferFrom(tokenB, msg.sender, pair, amountB);
+        liquidity = IUniswapV2Pair(pair).mint(to);
     }
 
     function addLiquidityETH(
