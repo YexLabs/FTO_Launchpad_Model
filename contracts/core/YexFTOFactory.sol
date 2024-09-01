@@ -93,6 +93,13 @@ contract YexFTOFactory is IYexFTOFactory, Ownable, WhiteList {
         }
     }
 
+    function removeRaisedToken(address _raisedToken) external onlyOwner {
+        if (isRaisedToken[_raisedToken]) {
+            isRaisedToken[_raisedToken] = false;
+            emit RaisedTokenRemoved(_raisedToken);
+        }
+    }
+
     function createFTO(
         address provider,
         address raisedToken,

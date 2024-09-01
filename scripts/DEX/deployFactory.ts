@@ -1,6 +1,6 @@
-import * as dotenv from "dotenv";
-import * as hre from "hardhat";
-import { verify } from "../verify-contract";
+import * as dotenv from 'dotenv';
+import * as hre from 'hardhat';
+import { verify } from '../verify-contract';
 dotenv.config();
 
 async function main() {
@@ -9,25 +9,25 @@ async function main() {
 }
 
 async function deployFactory(feeWalletAddy: any) {
-  const factory = await hre.ethers.getContractFactory("HenloDexFactory");
+  const factory = await hre.ethers.getContractFactory('HenloDexFactory');
   const factoryContract = await factory.deploy(feeWalletAddy);
 
   console.log(factoryContract.address);
   await factoryContract.deployed();
   console.log(
-    `HenloDexFactory contract deployed to ${factoryContract.address}`
+    `HenloDexFactory contract deployed to ${factoryContract.address}`,
   );
 
-  console.log("Waiting for blocks confirmations...");
+  console.log('Waiting for blocks confirmations...');
   await factoryContract.deployTransaction.wait(6);
-  console.log("Confirmed!");
+  console.log('Confirmed!');
 
-  console.log("INIT_HASH_CODE", await factoryContract.INIT_CODE_PAIR_HASH());
+  console.log('INIT_HASH_CODE', await factoryContract.INIT_CODE_PAIR_HASH());
 
   await verify(
     factoryContract.address,
-    "contracts/core/HenloDexFactory.sol:HenloDexFactory",
-    [process.env.FEE_WALLET]
+    'contracts/core/HenloDexFactory.sol:HenloDexFactory',
+    [process.env.FEE_WALLET],
   );
 
   return factoryContract.address;

@@ -11,6 +11,6 @@ contract ERC20Faucet is ERC20 {
     function faucet() public {
         require(!faucetedList[msg.sender], "fauceted");
         faucetedList[msg.sender] = true;
-        _mint(msg.sender, 300 * (10 ** decimals()));
+        _mint(msg.sender, 100000 * (10 ** decimals()));
     }
 }

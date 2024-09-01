@@ -2,7 +2,9 @@
 
 pragma solidity =0.8.16;
 
-interface IYexFTOHook {
+import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+
+interface IYexFTOHook is IERC165 {
     function createFTO(
         address raisedToken,
         string calldata name,
@@ -14,13 +16,9 @@ interface IYexFTOHook {
         bytes calldata data
     ) external;
 
-    function claimLP(address ftoPair, address lpToken) external;
+    function withdrawRaisedToken(address ftoPair) external;
 
     function execute(bytes calldata params) external;
 
-    function afterAddLiquidity(
-        address ftoPair,
-        address lpToken,
-        uint256 lpAmount
-    ) external;
+    function liquidityHookOp(address lpToken, uint256 lpAmount) external;
 }

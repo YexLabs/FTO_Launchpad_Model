@@ -9,19 +9,25 @@ import "./SafeMathUniswap.sol";
 library YexFTOLibrary {
     using SafeMathUniswap for uint;
 
+    error IdenticalAddress(address launchedToken);
+    error TokenAddressIsZero();
+
     // returns sorted token addresses, used to handle return values from pairs sorted in this order
     function sortTokens(
         address raisedToken,
         address launchedToken
     ) internal pure returns (address token0, address token1) {
-        require(
-            raisedToken != launchedToken,
-            "YexFTOLibrary: IDENTICAL_ADDRESSES"
-        );
+        if (raisedToken == launchedToken) {
+            revert IdenticalAddress(launchedToken);
+        }
+
         (token0, token1) = raisedToken < launchedToken
             ? (raisedToken, launchedToken)
             : (launchedToken, raisedToken);
-        require(token0 != address(0), "YexFTOLibrary: ZERO_ADDRESS");
+
+        if (token0 == address(0)) {
+            revert TokenAddressIsZero();
+        }
     }
 
     // calculates the CREATE2 address for a pair without making any external calls
@@ -42,7 +48,7 @@ library YexFTOLibrary {
                             hex"ff",
                             factory,
                             keccak256(abi.encodePacked(token0, token1)),
-                            hex"7afb47552aff4b8b4f811c5b66cb637863b98f04ac8c664403c7a9d81411cd3a" // init code hash
+                            hex"ec0720f86b937697f18414561b8c44b77f5c338320211a2c4362ae48386784ad" // init code hash
                         )
                     )
                 )
