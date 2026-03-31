@@ -7,15 +7,16 @@ License text copyright (c) 2017 MariaDB Corporation Ab, All Rights Reserved.
 
 Parameters
 
-Licensor:             Honeypot DAO LLC
+Licensor:             Yex Labs
 
-Licensed Work:        Honeypot DAO FTO Launchpad Hook Contracts
-                      The Licensed Work is (c) 2025 Honeypot DAO LLC
+Licensed Work:        Yex Labs FTO Launchpad Hook Contracts
+                      The Licensed Work is (c) 2025 Yex Labs
+                      (Based on technology originally developed by Honeypot DAO LLC)
                       Including but not limited to: BurnableHook.sol,
                       CustomHook.sol, NormalHook.sol, VestingHook.sol
 
 Additional Use Grant: Any uses listed and defined at terms agreed upon by
-                      Honeypot DAO LLC
+                      Yex Labs and Honeypot DAO LLC
 
 Change Date:          The earlier of 2027-03-31
 
